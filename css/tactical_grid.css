@@ -1,0 +1,292 @@
+/* ==========================================================================
+   CAN-SAT TACTICAL GROUND STATION - RADAR & RAW TELEMETRY
+   Polar/Cartesian Tactical Display, Grid Calculator & Raw Stream Table
+   ========================================================================== */
+
+/* Tactical Radar Container */
+.radar-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radar-canvas-container {
+  flex: 1;
+  min-height: 240px;
+  position: relative;
+  background: radial-gradient(circle at center, #0a1322 0%, #05080e 90%);
+  border: 1px solid var(--border-tactical);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.radar-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Radar Sweep Line Animation */
+.radar-sweep-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+/* Radar Information Readout Strip */
+.radar-telemetry-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-tactical);
+  border-radius: 3px;
+  padding: 6px;
+}
+
+.radar-stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.radar-stat-label {
+  font-family: var(--font-display);
+  font-size: 8.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.radar-stat-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-cyan);
+}
+
+/* Grid Reference Calculator Box */
+.grid-calc-card {
+  background: rgba(10, 14, 22, 0.9);
+  border: 1px solid var(--border-tactical);
+  border-radius: 3px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.grid-ref-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grid-ref-pill {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid var(--c-cyan);
+  padding: 2px 8px;
+  border-radius: 3px;
+  box-shadow: 0 0 10px var(--c-cyan-glow);
+}
+
+/* Artificial Horizon / Mini Attitude HUD */
+.attitude-hud-mini {
+  height: 80px;
+  background: #090e18;
+  border: 1px solid var(--border-tactical);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.attitude-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ==========================================================================
+   Raw Telemetry Stream Table
+   ========================================================================== */
+.raw-table-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.raw-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 6px 6px;
+  border-bottom: 1px solid var(--border-dim);
+  gap: 8px;
+}
+
+.table-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-tactical);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  outline: none;
+}
+
+.table-input:focus {
+  border-color: var(--c-cyan);
+  box-shadow: 0 0 6px var(--c-cyan-glow);
+}
+
+.raw-table-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.raw-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.raw-data-table th {
+  position: sticky;
+  top: 0;
+  background: #0f1725;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-tactical);
+  z-index: 2;
+}
+
+.raw-data-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.4);
+  color: var(--text-primary);
+}
+
+.raw-data-table tr:hover {
+  background: rgba(0, 229, 255, 0.06);
+}
+
+.raw-data-table tr.row-anomaly {
+  background: rgba(255, 23, 68, 0.1);
+  color: var(--c-critical);
+}
+
+.raw-data-table tr.row-warning {
+  background: rgba(255, 183, 0, 0.1);
+}
+
+/* Telemetry Charts Strip */
+.charts-grid {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  height: 100%;
+  width: 100%;
+}
+
+.chart-box {
+  background: #090e17;
+  border: 1px solid var(--border-tactical);
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: rgba(15, 22, 34, 0.8);
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.chart-header-title {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.chart-header-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-cyan);
+}
+
+.chart-canvas {
+  flex: 1;
+  width: 100%;
+  display: block;
+}
+
+/* Serial Console Drawer / Modal */
+.serial-console-overlay {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  max-width: 90vw;
+  height: 400px;
+  background: #0a0f18;
+  border: 1px solid var(--c-cyan);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.9), 0 0 15px var(--c-cyan-glow);
+  border-radius: 4px;
+  z-index: 1000;
+  flex-direction: column;
+}
+
+.serial-console-overlay.active {
+  display: flex;
+}
+
+.serial-log-content {
+  flex: 1;
+  background: #06090f;
+  color: #00ff66;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

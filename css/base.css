@@ -1,0 +1,249 @@
+/* ==========================================================================
+   CAN-SAT TACTICAL GROUND STATION - BASE DESIGN TOKENS & SYSTEM
+   Aesthetic: Diegetic Aerospace Flight Controller / High-Contrast Mission HUD
+   ========================================================================== */
+
+:root {
+  /* Core Palette */
+  --bg-space: #05070a;
+  --bg-surface: #0a0e14;
+  --bg-card: #0f1520;
+  --bg-card-hover: #151d2c;
+  --bg-card-active: #192335;
+  --bg-input: #0b1118;
+  
+  /* Borders & Grids */
+  --border-dim: #1e293b;
+  --border-tactical: #2a3a52;
+  --border-bright: #3e567a;
+  --border-focus: #00e5ff;
+
+  /* Telemetry Status Colors */
+  --c-nominal: #00ff66;       /* Clean green - Nominal */
+  --c-nominal-glow: rgba(0, 255, 102, 0.25);
+  --c-warning: #ffb700;       /* Amber warning */
+  --c-warning-glow: rgba(255, 183, 0, 0.25);
+  --c-critical: #ff1744;      /* Critical Red / Hazard */
+  --c-critical-glow: rgba(255, 23, 68, 0.35);
+  --c-cyan: #00e5ff;          /* Tactical telemetry cyan */
+  --c-cyan-glow: rgba(0, 229, 255, 0.25);
+  --c-accent: #00b0ff;
+  --c-purple: #9d4edd;
+  --c-gold: #ffd166;
+  
+  /* Text & Readouts */
+  --text-primary: #f0f4f8;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --text-highlight: #ffffff;
+  --text-mono-glow: 0 0 8px rgba(0, 229, 255, 0.4);
+
+  /* Fonts */
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', 'Fira Code', monospace;
+  --font-display: 'Chakra Petch', 'Orbitron', 'Titillium Web', -apple-system, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Elevation & Shadows */
+  --shadow-tactical: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 1px 1px var(--border-tactical);
+  --shadow-glow-cyan: 0 0 15px rgba(0, 229, 255, 0.2);
+  --shadow-glow-danger: 0 0 18px rgba(255, 23, 68, 0.3);
+
+  /* Scanline intensity */
+  --scanline-opacity: 0.18;
+}
+
+/* Reset & Box Sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-space);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* Monospace numerals */
+.font-mono, 
+.telemetry-val, 
+.timestamp, 
+.badge,
+.coord-display {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0.04em;
+}
+
+/* Tactical CRT Scanline & Grain Overlay */
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 3px, 6px 100%;
+  opacity: var(--scanline-opacity);
+  transition: opacity 0.3s ease;
+}
+
+body.scanlines-disabled .crt-overlay {
+  display: none;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-tactical);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-bright);
+}
+
+/* Tactical Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 2px;
+  border: 1px solid var(--border-tactical);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.badge-nominal {
+  color: var(--c-nominal);
+  border-color: rgba(0, 255, 102, 0.4);
+  background: rgba(0, 255, 102, 0.1);
+  box-shadow: 0 0 10px var(--c-nominal-glow);
+}
+
+.badge-warning {
+  color: var(--c-warning);
+  border-color: rgba(255, 183, 0, 0.5);
+  background: rgba(255, 183, 0, 0.12);
+  box-shadow: 0 0 10px var(--c-warning-glow);
+}
+
+.badge-critical {
+  color: var(--c-critical);
+  border-color: rgba(255, 23, 68, 0.6);
+  background: rgba(255, 23, 68, 0.15);
+  box-shadow: 0 0 12px var(--c-critical-glow);
+  animation: pulse-danger 1s infinite alternate;
+}
+
+.badge-cyan {
+  color: var(--c-cyan);
+  border-color: rgba(0, 229, 255, 0.4);
+  background: rgba(0, 229, 255, 0.1);
+}
+
+@keyframes pulse-danger {
+  0% { opacity: 0.85; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.03); box-shadow: 0 0 16px var(--c-critical-glow); }
+}
+
+/* Tactical Button System */
+.btn-tactical {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-tactical);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.btn-tactical:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-bright);
+  color: #fff;
+}
+
+.btn-tactical:active {
+  transform: translateY(1px);
+  background: var(--bg-card-active);
+}
+
+.btn-tactical.primary {
+  background: rgba(0, 229, 255, 0.12);
+  border-color: var(--c-cyan);
+  color: var(--c-cyan);
+}
+
+.btn-tactical.primary:hover {
+  background: rgba(0, 229, 255, 0.25);
+  box-shadow: 0 0 12px var(--c-cyan-glow);
+  color: #fff;
+}
+
+.btn-tactical.danger {
+  background: rgba(255, 23, 68, 0.12);
+  border-color: var(--c-critical);
+  color: var(--c-critical);
+}
+
+.btn-tactical.danger:hover {
+  background: rgba(255, 23, 68, 0.25);
+  box-shadow: 0 0 12px var(--c-critical-glow);
+  color: #fff;
+}
+
+.btn-tactical.success {
+  background: rgba(0, 255, 102, 0.12);
+  border-color: var(--c-nominal);
+  color: var(--c-nominal);
+}
+
+.btn-tactical.success:hover {
+  background: rgba(0, 255, 102, 0.25);
+  box-shadow: 0 0 12px var(--c-nominal-glow);
+  color: #fff;
+}
+
+.btn-tactical:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}

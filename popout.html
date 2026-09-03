@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CanSat Tactical Popout View | Multi-Monitor 4K</title>
+
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/instruments.css">
+  <link rel="stylesheet" href="css/tactical_grid.css">
+
+  <style>
+    body {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      background: #070a10;
+    }
+    .popout-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: rgba(15, 21, 32, 0.95);
+      border: 1px solid var(--c-cyan);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.8), 0 0 10px var(--c-cyan-glow);
+    }
+    .popout-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #0d1522;
+      border-bottom: 1px solid var(--border-tactical);
+    }
+    .popout-body {
+      flex: 1;
+      padding: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="crt-overlay"></div>
+
+  <div class="popout-container">
+    <div class="popout-header">
+      <div class="panel-title">
+        <span class="panel-title-icon">⧉</span>
+        <span id="popout-title-text">PANEL DESACOPLADO (MONITOR SECUNDARIO 4K)</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="badge badge-nominal" id="sync-badge">SINCRONIZADO</span>
+        <span class="font-mono" style="font-size:11px; color:var(--text-secondary);" id="popout-clock">--:--:--</span>
+      </div>
+    </div>
+    <div class="popout-body" id="popout-content-area">
+      <!-- Component instantiated here based on query param -->
+    </div>
+  </div>
+
+  <!-- Dependencies -->
+  <script src="js/state.js"></script>
+  <script src="js/modules/telemetry_parser.js"></script>
+  <script src="js/components/analog_gauges.js"></script>
+  <script src="js/components/charts_engine.js"></script>
+  <script src="js/components/tactical_radar.js"></script>
+  <script src="js/components/raw_table.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const moduleId = params.get('module') || 'radar';
+      const title = params.get('title') || 'Panel Desacoplado';
+
+      document.title = `CanSat 4K - ${title}`;
+      document.getElementById('popout-title-text').textContent = `${title} // PANTALLA SECUNDARIA`;
+
+      const contentArea = document.getElementById('popout-content-area');
+      let activeComponent = null;
+
+      if (moduleId === 'instruments') {
+        activeComponent = new window.AnalogGaugesComponent(contentArea);
+      } else if (moduleId === 'charts') {
+        activeComponent = new window.ChartsEngine(contentArea);
+      } else if (moduleId === 'radar') {
+        activeComponent = new window.TacticalRadarComponent(contentArea);
+      } else if (moduleId === 'raw_table') {
+        activeComponent = new window.RawTableComponent(contentArea);
+      }
+
+      // Clock
+      setInterval(() => {
+        const d = new Date();
+        document.getElementById('popout-clock').textContent = d.toISOString().substr(11, 8) + ' UTC';
+      }, 1000);
+
+      // Listen for BroadcastChannel updates from the ground station
+      if ('BroadcastChannel' in window) {
+        const channel = new BroadcastChannel('cansat_ground_station_bus');
+        channel.onmessage = (event) => {
+          const { type, payload } = event.data || {};
+          if (type === 'TELEMETRY_UPDATE' && payload && activeComponent) {
+            const { packet, metrics } = payload;
+            if (moduleId === 'instruments') {
+              activeComponent.update(packet, metrics);
+            } else if (moduleId === 'charts') {
+              activeComponent.addPoint(packet);
+            } else if (moduleId === 'radar') {
+              activeComponent.updateTelemetry(packet);
+            } else if (moduleId === 'raw_table') {
+              activeComponent.addPacket(packet);
+            }
+          }
+        };
+
+        // Request initial state from parent
+        channel.postMessage({ type: 'REQUEST_STATE' });
+      }
+    });
+  </script>
+</body>
+</html>

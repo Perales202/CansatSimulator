@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CanSat Ground Station & Tactical Simulator | SITL & HITL</title>
+  <meta name="description" content="Estación terrena y simulador táctico aeroespacial de alta fidelidad para CanSat. Operación dual SITL (física inercial) y HITL (Web Serial ESP32 / LoRa).">
+
+  <!-- Typography: Tactical JetBrains Mono & Chakra Petch -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Tactical Style Sheets -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/instruments.css">
+  <link rel="stylesheet" href="css/tactical_grid.css">
+</head>
+<body>
+
+  <!-- CRT Scanline & Phosphor Filter (Toggleable) -->
+  <div class="crt-overlay" id="crt-scanlines"></div>
+
+  <!-- Master Application Layout -->
+  <div class="app-container">
+
+    <!-- MASTER TACTICAL HEADER -->
+    <header class="master-header">
+      <div class="header-left">
+        <div class="mission-logo">
+          <!-- Aerospace Tactical Vector Icon -->
+          <svg class="mission-emblem" viewBox="0 0 24 24">
+            <path d="M12 2L4 6v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4zm0 4.5c1.93 0 3.5 1.57 3.5 3.5 0 2.5-3.5 7-3.5 7s-3.5-4.5-3.5-7c0-1.93 1.57-3.5 3.5-3.5zm0 2c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/>
+          </svg>
+          <div class="mission-title-group">
+            <h1>CANSAT GROUND STATION</h1>
+            <div class="mission-sub">SISTEMA TÁCTICO // TELEMETRÍA DIEGÉTICA</div>
+          </div>
+        </div>
+
+        <div class="status-pill-group">
+          <span class="status-dot" id="master-status-dot"></span>
+          <span class="font-mono" style="font-size:11px; font-weight:700;" id="master-status-text">ESPERANDO TELEMETRÍA</span>
+          <span class="badge badge-cyan" id="header-pkt-count">0 PKTS</span>
+          <span class="badge" id="header-lora-badge">LoRa: -- dBm</span>
+        </div>
+      </div>
+
+      <!-- CENTER: MISSION CLOCKS -->
+      <div class="header-center">
+        <div class="header-clocks">
+          <div class="clock-item">
+            <span class="clock-label">TIEMPO TRANSCURRIDO (MET)</span>
+            <span class="clock-val" id="clock-met-val">T+00:00:00</span>
+          </div>
+          <div class="clock-item">
+            <span class="clock-label">ESTACIÓN TERRENA (UTC)</span>
+            <span class="clock-val" id="clock-utc-val">--:--:-- UTC</span>
+          </div>
+        </div>
+
+        <!-- MODE SELECTOR (SITL / HITL) -->
+        <div class="mode-toggle-group">
+          <button class="mode-btn active" id="mode-btn-sitl" title="Software-in-the-Loop (Simulador Físico Interno)">MODO SITL (SIM)</button>
+          <button class="mode-btn" id="mode-btn-hitl" title="Hardware-in-the-Loop (Conexión ESP32 Web Serial)">MODO HITL (ESP32)</button>
+        </div>
+      </div>
+
+      <!-- RIGHT: CONTROLS & SYSTEM TOGGLES -->
+      <div class="header-right">
+        <!-- SITL Dedicated Controls Strip -->
+        <div class="control-strip" id="sitl-controls-strip">
+          <button class="btn-tactical primary" id="sitl-btn-play" title="Iniciar Simulación">▶ SIM</button>
+          <button class="btn-tactical" id="sitl-btn-pause" title="Pausar Simulación">⏸ PAUSA</button>
+          <button class="btn-tactical" id="sitl-btn-reset" title="Reiniciar Perfil de Vuelo">↺ REINICIAR</button>
+          
+          <select id="sitl-anomaly-select" class="table-input" style="font-size:10px; padding:3px 6px;">
+            <option value="NONE">Inyección de Fallos: Ninguno</option>
+            <option value="PARACHUTE_FAILURE">Fallo Despliegue Paracaídas</option>
+            <option value="BARO_SPIKE">Pico Errático Barómetro (BMP280)</option>
+            <option value="SIGNAL_DROP">Degradación Crítica Enlace LoRa</option>
+          </select>
+        </div>
+
+        <!-- HITL Dedicated Controls Strip -->
+        <div class="control-strip" id="hitl-controls-strip" style="display:none;">
+          <select id="serial-baud-select" class="table-input" style="font-size:10px;">
+            <option value="115200" selected>115200 Baudios</option>
+            <option value="57600">57600 Baudios</option>
+            <option value="9600">9600 Baudios</option>
+          </select>
+          <button class="btn-tactical success" id="btn-serial-connect">CONECTAR ESP32 (SERIAL)</button>
+          <span id="serial-port-indicator" class="badge">SIN DISPOSITIVO</span>
+          <button class="btn-tactical" id="btn-open-serial-console" title="Abrir Consola Serial de Depuración">CONSOLA</button>
+        </div>
+
+        <!-- Master system switches -->
+        <div class="system-actions">
+          <button class="btn-tactical primary" id="btn-audio-toggle" title="Activar/Silenciar Audio Diegético">AUDIO: ACTIVO</button>
+          <button class="btn-tactical" id="btn-scanlines-toggle" title="Alternar efecto CRT">CRT: ON</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN TACTICAL WORKSPACE (4-QUADRANT GRID) -->
+    <main class="tactical-workspace">
+
+      <!-- QUADRANT 1: ANALOG INSTRUMENTS CLUSTER -->
+      <section class="tactical-panel panel-instruments" data-module-id="instruments">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-title-icon">◈</span>
+            <span>INSTRUMENTOS ANALÓGICOS & SENSORES</span>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-icon popout-btn" title="Desacoplar a monitor secundario 4K">⧉</button>
+          </div>
+        </div>
+        <div class="panel-body" id="panel-instruments-body">
+          <!-- Populated by AnalogGaugesComponent -->
+        </div>
+      </section>
+
+      <!-- QUADRANT 2: DYNAMIC 60FPS OSCILLOSCOPE CHARTS -->
+      <section class="tactical-panel panel-charts" data-module-id="charts">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-title-icon">∿</span>
+            <span>PERFIL DE VUELO & TELEMETRÍA DINÁMICA (60 FPS)</span>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-icon popout-btn" title="Desacoplar a monitor secundario 4K">⧉</button>
+          </div>
+        </div>
+        <div class="panel-body" id="panel-charts-body">
+          <!-- Populated by ChartsEngine -->
+        </div>
+      </section>
+
+      <!-- QUADRANT 3: 2D POLAR/CARTESIAN TACTICAL RADAR & ATTITUDE HUD -->
+      <section class="tactical-panel panel-tactical-radar" data-module-id="radar">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-title-icon">◎</span>
+            <span>RADAR TÁCTICO & CUADRÍCULA CARTESIANA</span>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-icon popout-btn" title="Desacoplar a monitor secundario 4K">⧉</button>
+          </div>
+        </div>
+        <div class="panel-body" id="panel-radar-body">
+          <!-- Populated by TacticalRadarComponent -->
+        </div>
+      </section>
+
+      <!-- QUADRANT 4: RAW TELEMETRY STREAM TABLE & EXPORTER -->
+      <section class="tactical-panel panel-raw-telemetry" data-module-id="raw_table">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-title-icon">▤</span>
+            <span>REGISTRO DE TELEMETRÍA EN BRUTO (PAQUETES JSON)</span>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-icon popout-btn" title="Desacoplar a monitor secundario 4K">⧉</button>
+          </div>
+        </div>
+        <div class="panel-body" id="panel-raw-body">
+          <!-- Populated by RawTableComponent -->
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- SERIAL CONSOLE MODAL FOR HITL DEBUGGING -->
+  <div class="serial-console-overlay" id="serial-console-modal">
+    <div class="panel-header" style="background:#0e1522;">
+      <div class="panel-title">
+        <span class="panel-title-icon">⌨</span>
+        <span>CONSOLA RAW WEB SERIAL (ESP32 - 115200 BAUD)</span>
+      </div>
+      <button class="btn-tactical danger" id="btn-close-serial-console" style="padding:2px 6px; font-size:10px;">CERRAR</button>
+    </div>
+    <div class="serial-log-content" id="serial-log-pre">-- Monitor Serial CanSat Listo --
+Esperando flujo asíncrono desde ESP32...
+</div>
+    <div style="padding:6px; display:flex; gap:6px; background:#0e1522; border-top:1px solid var(--border-tactical);">
+      <input type="text" id="input-serial-cmd" class="table-input" placeholder="Enviar comando al ESP32 (ej. PING, CALIBRATE)..." style="flex:1;">
+      <button class="btn-tactical primary" id="btn-send-serial-cmd">ENVIAR</button>
+    </div>
+  </div>
+
+  <!-- CORE SCRIPTS & ARCHITECTURAL MODULES -->
+  <script src="js/state.js"></script>
+  <script src="js/modules/telemetry_parser.js"></script>
+  <script src="js/modules/physics_sitl.js"></script>
+  <script src="js/modules/web_serial.js"></script>
+  <script src="js/modules/audio_system.js"></script>
+  <script src="js/modules/multi_screen.js"></script>
+  <script src="js/components/analog_gauges.js"></script>
+  <script src="js/components/charts_engine.js"></script>
+  <script src="js/components/tactical_radar.js"></script>
+  <script src="js/components/raw_table.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+/* ==========================================================================
+   CAN-SAT TACTICAL GROUND STATION - DASHBOARD & MODULAR GRID
+   Optimized for Standard, Multi-monitor, and 4K Displays
+   ========================================================================== */
+
+/* Main Layout Container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at 50% 30%, #0d1522 0%, #05070a 80%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Master Tactical Header */
+.master-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: rgba(10, 14, 20, 0.95);
+  border-bottom: 1px solid var(--border-tactical);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  gap: 16px;
+}
+
+.header-left, .header-center, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mission-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mission-emblem {
+  width: 28px;
+  height: 28px;
+  fill: var(--c-cyan);
+  filter: drop-shadow(0 0 8px var(--c-cyan-glow));
+}
+
+.mission-title-group h1 {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #fff;
+  text-transform: uppercase;
+  margin: 0;
+  line-height: 1.1;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+
+.mission-sub {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Master Status Indicators */
+.status-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-dim);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-nominal);
+  box-shadow: 0 0 8px var(--c-nominal);
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.status-dot.warning {
+  background: var(--c-warning);
+  box-shadow: 0 0 8px var(--c-warning);
+}
+
+.status-dot.critical {
+  background: var(--c-critical);
+  box-shadow: 0 0 12px var(--c-critical);
+  animation: pulse-danger 0.8s infinite alternate;
+}
+
+.status-dot.offline {
+  background: var(--text-muted);
+  box-shadow: none;
+}
+
+/* Clock & Telemetry counters */
+.header-clocks {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-mono);
+}
+
+.clock-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.clock-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.clock-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-cyan);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+/* Mode Switcher (SITL / HITL) */
+.mode-toggle-group {
+  display: inline-flex;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-tactical);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.mode-btn {
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-btn.active {
+  background: rgba(0, 229, 255, 0.2);
+  color: var(--c-cyan);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+
+.mode-btn.active.hitl {
+  background: rgba(255, 183, 0, 0.2);
+  color: var(--c-warning);
+  box-shadow: 0 0 10px rgba(255, 183, 0, 0.3);
+}
+
+/* Audio & System Controls */
+.system-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==========================================================================
+   Tactical Grid Layout
+   4-Quadrant / Modular Architecture
+   ========================================================================== */
+.tactical-workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 360px 1fr 400px;
+  grid-template-rows: 1fr 260px;
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+  height: calc(100vh - 54px);
+}
+
+/* Tactical Card Container */
+.tactical-panel {
+  background: rgba(15, 21, 32, 0.85);
+  border: 1px solid var(--border-tactical);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: var(--shadow-tactical);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.tactical-panel:hover {
+  border-color: var(--border-bright);
+}
+
+/* Corner tactical bracket accents */
+.tactical-panel::before,
+.tactical-panel::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  pointer-events: none;
+  z-index: 5;
+}
+.tactical-panel::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--c-cyan);
+  border-left: 2px solid var(--c-cyan);
+}
+.tactical-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--c-cyan);
+  border-right: 2px solid var(--c-cyan);
+}
+
+/* Panel Header */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(21, 29, 44, 0.7);
+  border-bottom: 1px solid var(--border-tactical);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-highlight);
+}
+
+.panel-title-icon {
+  color: var(--c-cyan);
+  font-size: 13px;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-icon:hover {
+  background: var(--bg-card-hover);
+  color: var(--c-cyan);
+}
+
+.btn-icon.popout-btn:hover {
+  color: var(--c-gold);
+}
+
+/* Panel Body */
+.panel-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  padding: 8px;
+}
+
+/* Specific Panel Placements */
+.panel-instruments {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+}
+
+.panel-charts {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+}
+
+.panel-tactical-radar {
+  grid-column: 3 / 4;
+  grid-row: 1 / 3;
+}
+
+.panel-raw-telemetry {
+  grid-column: 1 / 3;
+  grid-row: 2 / 3;
+}
+
+/* If a panel is popped out */
+.tactical-panel.is-popped-out .panel-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 20, 0.9);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: center;
+  gap: 10px;
+}
+
+/* Floating Controls / Toolbar Strip */
+.control-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(15, 21, 32, 0.9);
+  border: 1px solid var(--border-tactical);
+  border-radius: 4px;
+}
+
+/* Responsive Tweaks for 4K and Ultra-wide */
+@media (min-width: 2560px) {
+  html, body {
+    font-size: 15px;
+  }
+  .tactical-workspace {
+    grid-template-columns: 480px 1fr 540px;
+    grid-template-rows: 1fr 340px;
+    gap: 16px;
+    padding: 16px;
+  }
+  .master-header {
+    padding: 12px 24px;
+  }
+  .mission-title-group h1 {
+    font-size: 20px;
+  }
+}
