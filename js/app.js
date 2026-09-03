@@ -112,71 +112,80 @@ document.addEventListener('DOMContentLoaded', () => {
     if (metEl) metEl.textContent = `T+${hrs}:${mins}:${secs}`;
   }, 1000);
 
-  // Update Header Telemetry Status
-  function updateHeaderTelemetryPills(packet, metrics) {
+  // Centralized Global Status Manager (En linea, Sin conexion, Simulando, Error)
+  function setGlobalStatus(status) {
     const statusDot = document.getElementById('master-status-dot');
     const statusText = document.getElementById('master-status-text');
-    const pktCountEl = document.getElementById('header-pkt-count');
-    const loraBadge = document.getElementById('header-lora-badge');
+    if (!statusDot || !statusText) return;
 
-    if (pktCountEl) pktCountEl.textContent = `${metrics.packetCount} PKTS`;
-
-    if (statusDot && statusText) {
-      if (packet.status === 'NOMINAL') {
+    switch (status) {
+      case 'Simulando':
         statusDot.className = 'status-dot';
-        statusText.textContent = 'TELEMETRÍA NOMINAL';
+        statusText.textContent = 'Simulando';
+        statusText.style.color = 'var(--c-cyan)';
+        break;
+      case 'En linea':
+        statusDot.className = 'status-dot';
+        statusText.textContent = 'En linea';
         statusText.style.color = 'var(--c-nominal)';
-      } else if (packet.status.includes('WARNING')) {
-        statusDot.className = 'status-dot warning';
-        statusText.textContent = packet.status;
-        statusText.style.color = 'var(--c-warning)';
-      } else {
+        break;
+      case 'Sin conexion':
+        statusDot.className = 'status-dot offline';
+        statusText.textContent = 'Sin conexion';
+        statusText.style.color = 'var(--text-muted)';
+        break;
+      case 'Error':
         statusDot.className = 'status-dot critical';
-        statusText.textContent = packet.status;
+        statusText.textContent = 'Error';
         statusText.style.color = 'var(--c-critical)';
-      }
-    }
-
-    if (loraBadge && packet.sensors?.telemetry) {
-      loraBadge.textContent = `LoRa: ${packet.sensors.telemetry.rssi_lora}dBm`;
+        break;
     }
   }
 
-  // Mode Switcher: SITL vs HITL
-  const modeBtnSitl = document.getElementById('mode-btn-sitl');
-  const modeBtnHitl = document.getElementById('mode-btn-hitl');
+  // Update Header Telemetry Status
+  function updateHeaderTelemetryPills(packet, metrics) {
+    if (packet.status && (packet.status.includes('ANOMALY') || packet.status.includes('WARNING') || packet.status !== 'NOMINAL')) {
+      setGlobalStatus('Error');
+    } else if (state.config.mode === 'SITL') {
+      setGlobalStatus(sitl.running ? 'Simulando' : 'Sin conexion');
+    } else if (state.config.mode === 'HITL') {
+      setGlobalStatus(serial.isConnected ? 'En linea' : 'Sin conexion');
+    }
+  }
+
+  // Mode Switcher Dropdown (SITL vs HITL)
+  const modeSelectDropdown = document.getElementById('mode-select-dropdown');
   const sitlControlsStrip = document.getElementById('sitl-controls-strip');
   const hitlControlsStrip = document.getElementById('hitl-controls-strip');
 
   function setAppMode(mode, triggerModal = false) {
     state.setMode(mode);
+    if (modeSelectDropdown) modeSelectDropdown.value = mode;
+
     if (mode === 'SITL') {
-      modeBtnSitl.className = 'mode-btn active';
-      modeBtnHitl.className = 'mode-btn';
       sitlControlsStrip.style.display = 'flex';
       hitlControlsStrip.style.display = 'none';
       if (triggerModal) {
         openSitlConfigModal();
       } else {
         sitl.start();
+        setGlobalStatus('Simulando');
       }
     } else {
-      modeBtnSitl.className = 'mode-btn';
-      modeBtnHitl.className = 'mode-btn active hitl';
       sitlControlsStrip.style.display = 'none';
       hitlControlsStrip.style.display = 'flex';
       sitl.stop();
       closeSitlConfigModal();
+      setGlobalStatus(serial.isConnected ? 'En linea' : 'Sin conexion');
     }
   }
 
-  // When clicking MODO SITL, open the configuration popup to verify/setup simulation parameters
-  if (modeBtnSitl) {
-    modeBtnSitl.addEventListener('click', () => {
-      setAppMode('SITL', true);
+  if (modeSelectDropdown) {
+    modeSelectDropdown.addEventListener('change', (e) => {
+      const selected = e.target.value;
+      setAppMode(selected, selected === 'SITL');
     });
   }
-  if (modeBtnHitl) modeBtnHitl.addEventListener('click', () => setAppMode('HITL'));
 
   // SITL Configuration Modal Elements
   const modalConfig = document.getElementById('sitl-config-modal');
@@ -366,33 +375,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start in SITL mode by default as per Phase 1
   setAppMode('SITL', false);
 
-  // SITL Simulation Controls
-  const btnSitlPlay = document.getElementById('sitl-btn-play');
-  const btnSitlPause = document.getElementById('sitl-btn-pause');
-  const btnSitlReset = document.getElementById('sitl-btn-reset');
+  // 4. SITL Action Dropdown Control
+  const sitlActionSelect = document.getElementById('sitl-action-select');
   const anomalySelect = document.getElementById('sitl-anomaly-select');
 
-  if (btnSitlPlay) {
-    btnSitlPlay.addEventListener('click', () => {
-      sitl.start();
-      btnSitlPlay.classList.add('primary');
-      btnSitlPause.classList.remove('primary');
-    });
-  }
-
-  if (btnSitlPause) {
-    btnSitlPause.addEventListener('click', () => {
-      sitl.stop();
-      btnSitlPause.classList.add('primary');
-      btnSitlPlay.classList.remove('primary');
-    });
-  }
-
-  if (btnSitlReset) {
-    btnSitlReset.addEventListener('click', () => {
-      sitl.reset();
-      missionStartTime = Date.now();
-      state.resetMission();
+  if (sitlActionSelect) {
+    sitlActionSelect.addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (val === 'PLAY') {
+        sitl.start();
+        setGlobalStatus('Simulando');
+      } else if (val === 'PAUSE') {
+        sitl.stop();
+        setGlobalStatus('Sin conexion');
+      } else if (val === 'RESET') {
+        sitl.reset();
+        missionStartTime = Date.now();
+        state.resetMission();
+        sitl.start();
+        sitlActionSelect.value = 'PLAY';
+        setGlobalStatus('Simulando');
+      }
     });
   }
 
@@ -401,53 +404,67 @@ document.addEventListener('DOMContentLoaded', () => {
       const val = e.target.value;
       if (val === 'NONE') {
         sitl.clearAnomaly();
+        setGlobalStatus(sitl.running ? 'Simulando' : 'Sin conexion');
       } else {
         sitl.setAnomaly(val);
+        setGlobalStatus('Error');
       }
     });
   }
 
-  // Web Serial HITL Controls
-  const btnSerialConnect = document.getElementById('btn-serial-connect');
+  // 4. Web Serial HITL Dropdown Controls
+  const hitlActionSelect = document.getElementById('hitl-action-select');
   const baudSelect = document.getElementById('serial-baud-select');
-  const btnOpenConsole = document.getElementById('btn-open-serial-console');
   const consoleOverlay = document.getElementById('serial-console-modal');
   const btnCloseConsole = document.getElementById('btn-close-serial-console');
   const serialLogContent = document.getElementById('serial-log-pre');
   const btnSendSerial = document.getElementById('btn-send-serial-cmd');
   const inputSerialCmd = document.getElementById('input-serial-cmd');
 
-  if (btnSerialConnect) {
-    btnSerialConnect.addEventListener('click', async () => {
-      if (serial.isConnected) {
-        await serial.disconnect();
-      } else {
+  if (hitlActionSelect) {
+    hitlActionSelect.addEventListener('change', async (e) => {
+      const action = e.target.value;
+      if (action === 'CONNECT') {
         audio.init(); // unlock audio context on click
         const baud = baudSelect ? baudSelect.value : 115200;
         try {
           await serial.connect(baud);
         } catch (err) {
           alert(`No se pudo conectar al puerto Serial: ${err.message}`);
+          hitlActionSelect.value = 'CONNECT';
         }
+      } else if (action === 'DISCONNECT') {
+        await serial.disconnect();
+      } else if (action === 'CONSOLE') {
+        if (consoleOverlay) consoleOverlay.classList.add('active');
+        hitlActionSelect.value = serial.isConnected ? 'DISCONNECT' : 'CONNECT';
       }
     });
   }
 
   function updateSerialUIStatus(status, details) {
+    if (!hitlActionSelect) return;
+    const connectOpt = hitlActionSelect.querySelector('option[value="CONNECT"]');
+    const disconnectOpt = hitlActionSelect.querySelector('option[value="DISCONNECT"]');
+
     if (status === 'CONNECTED') {
-      btnSerialConnect.textContent = 'DESCONECTAR ESP32';
-      btnSerialConnect.className = 'btn-tactical danger';
-      document.getElementById('serial-port-indicator').textContent = 'ESP32 CONECTADO';
-      document.getElementById('serial-port-indicator').className = 'badge badge-nominal';
+      if (connectOpt) connectOpt.disabled = true;
+      if (disconnectOpt) {
+        disconnectOpt.disabled = false;
+        disconnectOpt.selected = true;
+      }
+      hitlActionSelect.style.color = 'var(--c-critical)';
+      setGlobalStatus('En linea');
     } else if (status === 'CONNECTING') {
-      btnSerialConnect.textContent = 'CONECTANDO...';
-      btnSerialConnect.disabled = true;
+      setGlobalStatus('Sin conexion');
     } else {
-      btnSerialConnect.textContent = 'CONECTAR ESP32 (WEB SERIAL)';
-      btnSerialConnect.className = 'btn-tactical success';
-      btnSerialConnect.disabled = false;
-      document.getElementById('serial-port-indicator').textContent = 'SIN DISPOSITIVO';
-      document.getElementById('serial-port-indicator').className = 'badge';
+      if (connectOpt) {
+        connectOpt.disabled = false;
+        connectOpt.selected = true;
+      }
+      if (disconnectOpt) disconnectOpt.disabled = true;
+      hitlActionSelect.style.color = 'var(--c-nominal)';
+      setGlobalStatus('Sin conexion');
     }
   }
 
@@ -463,9 +480,6 @@ document.addEventListener('DOMContentLoaded', () => {
     serialLogContent.scrollTop = serialLogContent.scrollHeight;
   }
 
-  if (btnOpenConsole && consoleOverlay) {
-    btnOpenConsole.addEventListener('click', () => consoleOverlay.classList.add('active'));
-  }
   if (btnCloseConsole && consoleOverlay) {
     btnCloseConsole.addEventListener('click', () => consoleOverlay.classList.remove('active'));
   }
@@ -492,16 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
       audio.setEnabled(!audio.enabled);
       btnAudioToggle.textContent = audio.enabled ? 'AUDIO: ACTIVO' : 'AUDIO: SILENCIO';
       btnAudioToggle.className = audio.enabled ? 'btn-tactical primary' : 'btn-tactical';
-    });
-  }
-
-  // CRT Scanline Toggle
-  const btnScanlinesToggle = document.getElementById('btn-scanlines-toggle');
-  if (btnScanlinesToggle) {
-    btnScanlinesToggle.addEventListener('click', () => {
-      document.body.classList.toggle('scanlines-disabled');
-      const isDisabled = document.body.classList.contains('scanlines-disabled');
-      btnScanlinesToggle.textContent = isDisabled ? 'CRT: OFF' : 'CRT: ON';
     });
   }
 

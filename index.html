@@ -19,9 +19,6 @@
 </head>
 <body>
 
-  <!-- CRT Scanline & Phosphor Filter (Toggleable) -->
-  <div class="crt-overlay" id="crt-scanlines"></div>
-
   <!-- Master Application Layout -->
   <div class="app-container">
 
@@ -34,20 +31,18 @@
             <path d="M12 2L4 6v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4zm0 4.5c1.93 0 3.5 1.57 3.5 3.5 0 2.5-3.5 7-3.5 7s-3.5-4.5-3.5-7c0-1.93 1.57-3.5 3.5-3.5zm0 2c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/>
           </svg>
           <div class="mission-title-group">
-            <h1>CANSAT GROUND STATION</h1>
-            <div class="mission-sub">SISTEMA TÁCTICO // TELEMETRÍA DIEGÉTICA</div>
+            <h1>Simulador CanSat</h1>
           </div>
         </div>
 
-        <div class="status-pill-group">
+        <!-- PÍLDORA DE ESTADO GLOBAL SIMPLIFICADA (En linea, Sin conexion, Simulando, Error) -->
+        <div class="status-pill-group" id="master-status-pill">
           <span class="status-dot" id="master-status-dot"></span>
-          <span class="font-mono" style="font-size:11px; font-weight:700;" id="master-status-text">ESPERANDO TELEMETRÍA</span>
-          <span class="badge badge-cyan" id="header-pkt-count">0 PKTS</span>
-          <span class="badge" id="header-lora-badge">LoRa: -- dBm</span>
+          <span class="font-mono" style="font-size:11px; font-weight:700;" id="master-status-text">Simulando</span>
         </div>
       </div>
 
-      <!-- CENTER: MISSION CLOCKS -->
+      <!-- CENTER: MISSION CLOCKS & MODE DROPDOWN -->
       <div class="header-center">
         <div class="header-clocks">
           <div class="clock-item">
@@ -60,21 +55,28 @@
           </div>
         </div>
 
-        <!-- MODE SELECTOR (SITL / HITL) -->
-        <div class="mode-toggle-group">
-          <button class="mode-btn active" id="mode-btn-sitl" title="Software-in-the-Loop (Simulador Físico Interno)">MODO SITL (SIM)</button>
-          <button class="mode-btn" id="mode-btn-hitl" title="Hardware-in-the-Loop (Conexión ESP32 Web Serial)">MODO HITL (ESP32)</button>
+        <!-- 3. SELECTOR DE MODO DESPLEGABLE -->
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span class="clock-label" style="font-size:9px;">MODO:</span>
+          <select id="mode-select-dropdown" class="table-input" style="font-weight:700; font-family:var(--font-mono); font-size:11px; padding:3px 8px; border-color:var(--border-focus); color:var(--c-cyan);">
+            <option value="SITL" selected>Modo SITL (Simulación)</option>
+            <option value="HITL">Modo HITL (Hardware ESP32)</option>
+          </select>
         </div>
       </div>
 
-      <!-- RIGHT: CONTROLS & SYSTEM TOGGLES -->
+      <!-- RIGHT: DYNAMIC TOOLBAR DROPDOWN & PARAMETERS BUTTON -->
       <div class="header-right">
-        <!-- SITL Dedicated Controls Strip -->
+        <!-- SITL Dedicated Controls: Parámetros como botón + Menú desplegable de acciones -->
         <div class="control-strip" id="sitl-controls-strip">
-          <button class="btn-tactical primary" id="sitl-btn-play" title="Iniciar Simulación">▶ SIM</button>
-          <button class="btn-tactical" id="sitl-btn-pause" title="Pausar Simulación">⏸ PAUSA</button>
-          <button class="btn-tactical" id="sitl-btn-reset" title="Reiniciar Perfil de Vuelo">↺ REINICIAR</button>
-          <button class="btn-tactical" id="sitl-btn-config" title="Configurar Parámetros de Misión">⚙ PARÁMETROS</button>
+          <button class="btn-tactical primary" id="sitl-btn-config" title="Configurar Parámetros de Misión">⚙ PARÁMETROS</button>
+
+          <!-- 4. Barra de herramientas dinámica en menú desplegable -->
+          <select id="sitl-action-select" class="table-input" style="font-size:10px; padding:3px 8px; font-weight:600;">
+            <option value="PLAY" selected>Acción: ▶ Iniciar / Reanudar</option>
+            <option value="PAUSE">Acción: ⏸ Pausar Simulación</option>
+            <option value="RESET">Acción: ↺ Reiniciar Vuelo</option>
+          </select>
           
           <select id="sitl-anomaly-select" class="table-input" style="font-size:10px; padding:3px 6px;">
             <option value="NONE">Inyección de Fallos: Ninguno</option>
@@ -84,22 +86,25 @@
           </select>
         </div>
 
-        <!-- HITL Dedicated Controls Strip -->
+        <!-- HITL Dedicated Controls: Menú desplegable de herramientas serial -->
         <div class="control-strip" id="hitl-controls-strip" style="display:none;">
           <select id="serial-baud-select" class="table-input" style="font-size:10px;">
             <option value="115200" selected>115200 Baudios</option>
             <option value="57600">57600 Baudios</option>
             <option value="9600">9600 Baudios</option>
           </select>
-          <button class="btn-tactical success" id="btn-serial-connect">CONECTAR ESP32 (SERIAL)</button>
-          <span id="serial-port-indicator" class="badge">SIN DISPOSITIVO</span>
-          <button class="btn-tactical" id="btn-open-serial-console" title="Abrir Consola Serial de Depuración">CONSOLA</button>
+
+          <!-- 4. Menú desplegable para acciones de Hardware Serial -->
+          <select id="hitl-action-select" class="table-input" style="font-size:10px; padding:3px 8px; font-weight:600; color:var(--c-nominal);">
+            <option value="CONNECT" selected>Acción: ⚡ Conectar ESP32</option>
+            <option value="DISCONNECT" disabled>Acción: ✕ Desconectar ESP32</option>
+            <option value="CONSOLE">Acción: ⌨ Abrir Consola Serial</option>
+          </select>
         </div>
 
-        <!-- Master system switches -->
+        <!-- Master system switches (sin efecto CRT) -->
         <div class="system-actions">
           <button class="btn-tactical primary" id="btn-audio-toggle" title="Activar/Silenciar Audio Diegético">AUDIO: ACTIVO</button>
-          <button class="btn-tactical" id="btn-scanlines-toggle" title="Alternar efecto CRT">CRT: ON</button>
         </div>
       </div>
     </header>
