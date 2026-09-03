@@ -55,13 +55,16 @@
           </div>
         </div>
 
-        <!-- 3. SELECTOR DE MODO DESPLEGABLE -->
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span class="clock-label" style="font-size:9px;">MODO:</span>
-          <select id="mode-select-dropdown" class="table-input" style="font-weight:700; font-family:var(--font-mono); font-size:11px; padding:3px 8px; border-color:var(--border-focus); color:var(--c-cyan);">
-            <option value="SITL" selected>Modo SITL (Simulación)</option>
-            <option value="HITL">Modo HITL (Hardware ESP32)</option>
-          </select>
+        <!-- 3. SELECTOR DE MODO DESPLEGABLE TÁCTICO -->
+        <div class="tactical-dropdown" id="mode-dropdown">
+          <button type="button" class="tactical-dropdown-btn primary" id="mode-dropdown-trigger">
+            <span id="mode-dropdown-label">MODO: SITL (SIMULACIÓN)</span>
+            <span class="dropdown-arrow">▼</span>
+          </button>
+          <div class="tactical-dropdown-menu">
+            <div class="dropdown-item active" data-mode="SITL">⚡ Modo SITL (Simulación)</div>
+            <div class="dropdown-item" data-mode="HITL">📡 Modo HITL (Hardware ESP32)</div>
+          </div>
         </div>
       </div>
 
@@ -71,35 +74,56 @@
         <div class="control-strip" id="sitl-controls-strip">
           <button class="btn-tactical primary" id="sitl-btn-config" title="Configurar Parámetros de Misión">⚙ PARÁMETROS</button>
 
-          <!-- 4. Barra de herramientas dinámica en menú desplegable -->
-          <select id="sitl-action-select" class="table-input" style="font-size:10px; padding:3px 8px; font-weight:600;">
-            <option value="PLAY" selected>Acción: ▶ Iniciar / Reanudar</option>
-            <option value="PAUSE">Acción: ⏸ Pausar Simulación</option>
-            <option value="RESET">Acción: ↺ Reiniciar Vuelo</option>
-          </select>
+          <!-- 4. Menú desplegable de Acciones de Simulación -->
+          <div class="tactical-dropdown" id="sitl-actions-dropdown">
+            <button type="button" class="tactical-dropdown-btn" id="sitl-actions-trigger">
+              <span id="sitl-actions-label">ACCIONES DE SIMULACIÓN</span>
+              <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="tactical-dropdown-menu">
+              <div class="dropdown-item" data-sitl-action="PLAY">▶ Iniciar / Reanudar Simulación</div>
+              <div class="dropdown-item" data-sitl-action="PAUSE">⏸ Pausar Simulación</div>
+              <div class="dropdown-item" data-sitl-action="RESET">↺ Reiniciar Perfil de Vuelo</div>
+            </div>
+          </div>
           
-          <select id="sitl-anomaly-select" class="table-input" style="font-size:10px; padding:3px 6px;">
-            <option value="NONE">Inyección de Fallos: Ninguno</option>
-            <option value="PARACHUTE_FAILURE">Fallo Despliegue Paracaídas</option>
-            <option value="BARO_SPIKE">Pico Errático Barómetro (BMP280)</option>
-            <option value="SIGNAL_DROP">Degradación Crítica Enlace LoRa</option>
-          </select>
+          <!-- Menú desplegable de Inyección de Fallos -->
+          <div class="tactical-dropdown" id="sitl-anomaly-dropdown">
+            <button type="button" class="tactical-dropdown-btn" id="sitl-anomaly-trigger">
+              <span id="sitl-anomaly-label">FALLOS: NINGUNO</span>
+              <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="tactical-dropdown-menu">
+              <div class="dropdown-item active" data-anomaly="NONE">✓ Estado Nominal (Sin Fallos)</div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" data-anomaly="PARACHUTE_FAILURE">⚠ Fallo Despliegue Paracaídas</div>
+              <div class="dropdown-item" data-anomaly="BARO_SPIKE">⚠ Pico Errático Barómetro (BMP280)</div>
+              <div class="dropdown-item" data-anomaly="SIGNAL_DROP">⚠ Degradación Enlace LoRa</div>
+            </div>
+          </div>
         </div>
 
-        <!-- HITL Dedicated Controls: Menú desplegable de herramientas serial -->
+        <!-- HITL Dedicated Controls: Herramientas serial en menú desplegable -->
         <div class="control-strip" id="hitl-controls-strip" style="display:none;">
-          <select id="serial-baud-select" class="table-input" style="font-size:10px;">
+          <select id="serial-baud-select" class="table-input" style="font-size:10px; padding:4px 6px;">
             <option value="115200" selected>115200 Baudios</option>
             <option value="57600">57600 Baudios</option>
             <option value="9600">9600 Baudios</option>
           </select>
 
           <!-- 4. Menú desplegable para acciones de Hardware Serial -->
-          <select id="hitl-action-select" class="table-input" style="font-size:10px; padding:3px 8px; font-weight:600; color:var(--c-nominal);">
-            <option value="CONNECT" selected>Acción: ⚡ Conectar ESP32</option>
-            <option value="DISCONNECT" disabled>Acción: ✕ Desconectar ESP32</option>
-            <option value="CONSOLE">Acción: ⌨ Abrir Consola Serial</option>
-          </select>
+          <div class="tactical-dropdown" id="hitl-actions-dropdown">
+            <button type="button" class="tactical-dropdown-btn success" id="hitl-actions-trigger">
+              <span id="hitl-actions-label">HERRAMIENTAS SERIAL</span>
+              <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="tactical-dropdown-menu">
+              <div class="dropdown-item" id="hitl-item-connect" data-hitl-action="CONNECT">⚡ Conectar ESP32 (Serial)</div>
+              <div class="dropdown-item danger" id="hitl-item-disconnect" data-hitl-action="DISCONNECT" style="display:none;">✕ Desconectar ESP32</div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" data-hitl-action="CONSOLE">⌨ Abrir Consola Serial</div>
+            </div>
+          </div>
         </div>
 
         <!-- Master system switches (sin efecto CRT) -->

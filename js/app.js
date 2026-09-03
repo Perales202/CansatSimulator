@@ -154,38 +154,46 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Mode Switcher Dropdown (SITL vs HITL)
-  const modeSelectDropdown = document.getElementById('mode-select-dropdown');
+  const modeDropdown = document.getElementById('mode-dropdown');
+  const modeDropdownLabel = document.getElementById('mode-dropdown-label');
+  const modeDropdownTrigger = document.getElementById('mode-dropdown-trigger');
   const sitlControlsStrip = document.getElementById('sitl-controls-strip');
   const hitlControlsStrip = document.getElementById('hitl-controls-strip');
 
-  function setAppMode(mode, triggerModal = false) {
+  function setAppMode(mode) {
     state.setMode(mode);
-    if (modeSelectDropdown) modeSelectDropdown.value = mode;
 
     if (mode === 'SITL') {
-      sitlControlsStrip.style.display = 'flex';
-      hitlControlsStrip.style.display = 'none';
-      if (triggerModal) {
-        openSitlConfigModal();
-      } else {
-        sitl.start();
-        setGlobalStatus('Simulando');
-      }
+      if (modeDropdownLabel) modeDropdownLabel.textContent = 'MODO: SITL (SIMULACIÓN)';
+      if (modeDropdownTrigger) modeDropdownTrigger.className = 'tactical-dropdown-btn primary';
+      if (sitlControlsStrip) sitlControlsStrip.style.display = 'flex';
+      if (hitlControlsStrip) hitlControlsStrip.style.display = 'none';
+      sitl.start();
+      setGlobalStatus('Simulando');
     } else {
-      sitlControlsStrip.style.display = 'none';
-      hitlControlsStrip.style.display = 'flex';
+      if (modeDropdownLabel) modeDropdownLabel.textContent = 'MODO: HITL (ESP32)';
+      if (modeDropdownTrigger) modeDropdownTrigger.className = 'tactical-dropdown-btn warning';
+      if (sitlControlsStrip) sitlControlsStrip.style.display = 'none';
+      if (hitlControlsStrip) hitlControlsStrip.style.display = 'flex';
       sitl.stop();
       closeSitlConfigModal();
       setGlobalStatus(serial.isConnected ? 'En linea' : 'Sin conexion');
     }
-  }
 
-  if (modeSelectDropdown) {
-    modeSelectDropdown.addEventListener('change', (e) => {
-      const selected = e.target.value;
-      setAppMode(selected, selected === 'SITL');
+    // Update active visual on dropdown items
+    document.querySelectorAll('#mode-dropdown .dropdown-item').forEach((item) => {
+      item.classList.toggle('active', item.getAttribute('data-mode') === mode);
     });
   }
+
+  document.querySelectorAll('#mode-dropdown .dropdown-item').forEach((item) => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const selectedMode = item.getAttribute('data-mode');
+      setAppMode(selectedMode);
+      if (modeDropdown) modeDropdown.classList.remove('open');
+    });
+  });
 
   // SITL Configuration Modal Elements
   const modalConfig = document.getElementById('sitl-config-modal');
@@ -355,8 +363,24 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       // Synchronize anomaly dropdown in toolbar
-      if (anomalySelect) {
-        anomalySelect.value = anomaly;
+      const anomalyLabelEl = document.getElementById('sitl-anomaly-label');
+      const anomalyTriggerEl = document.getElementById('sitl-anomaly-trigger');
+      if (anomalyLabelEl && anomalyTriggerEl) {
+        document.querySelectorAll('#sitl-anomaly-dropdown .dropdown-item').forEach(i => {
+          i.classList.toggle('active', i.getAttribute('data-anomaly') === anomaly);
+        });
+        if (anomaly === 'NONE') {
+          anomalyLabelEl.textContent = 'FALLOS: NINGUNO';
+          anomalyTriggerEl.className = 'tactical-dropdown-btn';
+        } else {
+          const nameMap = {
+            PARACHUTE_FAILURE: 'FALLO: PARACAÍDAS',
+            BARO_SPIKE: 'FALLO: BARÓMETRO',
+            SIGNAL_DROP: 'FALLO: SEÑAL LORA'
+          };
+          anomalyLabelEl.textContent = nameMap[anomaly] || 'FALLO ACTIVO';
+          anomalyTriggerEl.className = 'tactical-dropdown-btn danger';
+        }
       }
 
       // Reset mission state and timer if checked
@@ -366,54 +390,104 @@ document.addEventListener('DOMContentLoaded', () => {
         state.resetMission();
       }
 
-      setAppMode('SITL', false);
+      setAppMode('SITL');
       sitl.start();
       closeSitlConfigModal();
     });
   }
 
   // Start in SITL mode by default as per Phase 1
-  setAppMode('SITL', false);
+  setAppMode('SITL');
 
-  // 4. SITL Action Dropdown Control
-  const sitlActionSelect = document.getElementById('sitl-action-select');
-  const anomalySelect = document.getElementById('sitl-anomaly-select');
+  // =========================================================================
+  // UNIVERSAL TACTICAL DROPDOWN SYSTEM
+  // =========================================================================
+  document.querySelectorAll('.tactical-dropdown-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const parent = btn.closest('.tactical-dropdown');
+      if (!parent) return;
+      const wasOpen = parent.classList.contains('open');
+      // Close all other dropdowns
+      document.querySelectorAll('.tactical-dropdown.open').forEach(d => d.classList.remove('open'));
+      if (!wasOpen) {
+        parent.classList.add('open');
+      }
+    });
+  });
 
-  if (sitlActionSelect) {
-    sitlActionSelect.addEventListener('change', (e) => {
-      const val = e.target.value;
-      if (val === 'PLAY') {
+  // Close all open dropdowns when clicking anywhere outside
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.tactical-dropdown.open').forEach(d => d.classList.remove('open'));
+  });
+
+  // =========================================================================
+  // 4. SITL DROPDOWN CONTROLS (ACCIONES & ANOMALÍAS)
+  // =========================================================================
+  const sitlActionsDropdown = document.getElementById('sitl-actions-dropdown');
+  document.querySelectorAll('#sitl-actions-dropdown .dropdown-item').forEach((item) => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const action = item.getAttribute('data-sitl-action');
+      if (sitlActionsDropdown) sitlActionsDropdown.classList.remove('open');
+
+      if (action === 'PLAY') {
         sitl.start();
         setGlobalStatus('Simulando');
-      } else if (val === 'PAUSE') {
+      } else if (action === 'PAUSE') {
         sitl.stop();
         setGlobalStatus('Sin conexion');
-      } else if (val === 'RESET') {
+      } else if (action === 'RESET') {
         sitl.reset();
         missionStartTime = Date.now();
         state.resetMission();
         sitl.start();
-        sitlActionSelect.value = 'PLAY';
         setGlobalStatus('Simulando');
       }
     });
-  }
+  });
 
-  if (anomalySelect) {
-    anomalySelect.addEventListener('change', (e) => {
-      const val = e.target.value;
-      if (val === 'NONE') {
+  // SITL Anomaly Dropdown
+  const sitlAnomalyDropdown = document.getElementById('sitl-anomaly-dropdown');
+  const sitlAnomalyLabel = document.getElementById('sitl-anomaly-label');
+  const sitlAnomalyTrigger = document.getElementById('sitl-anomaly-trigger');
+
+  document.querySelectorAll('#sitl-anomaly-dropdown .dropdown-item').forEach((item) => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const anomaly = item.getAttribute('data-anomaly');
+      if (sitlAnomalyDropdown) sitlAnomalyDropdown.classList.remove('open');
+
+      document.querySelectorAll('#sitl-anomaly-dropdown .dropdown-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+
+      if (anomaly === 'NONE') {
         sitl.clearAnomaly();
+        if (sitlAnomalyLabel) sitlAnomalyLabel.textContent = 'FALLOS: NINGUNO';
+        if (sitlAnomalyTrigger) sitlAnomalyTrigger.className = 'tactical-dropdown-btn';
         setGlobalStatus(sitl.running ? 'Simulando' : 'Sin conexion');
       } else {
-        sitl.setAnomaly(val);
+        sitl.setAnomaly(anomaly);
+        const nameMap = {
+          PARACHUTE_FAILURE: 'FALLO: PARACAÍDAS',
+          BARO_SPIKE: 'FALLO: BARÓMETRO',
+          SIGNAL_DROP: 'FALLO: SEÑAL LORA'
+        };
+        if (sitlAnomalyLabel) sitlAnomalyLabel.textContent = nameMap[anomaly] || 'FALLO ACTIVO';
+        if (sitlAnomalyTrigger) sitlAnomalyTrigger.className = 'tactical-dropdown-btn danger';
         setGlobalStatus('Error');
       }
     });
-  }
+  });
 
-  // 4. Web Serial HITL Dropdown Controls
-  const hitlActionSelect = document.getElementById('hitl-action-select');
+  // =========================================================================
+  // 4. HITL HARDWARE SERIAL DROPDOWN CONTROLS
+  // =========================================================================
+  const hitlActionsDropdown = document.getElementById('hitl-actions-dropdown');
+  const hitlActionsTrigger = document.getElementById('hitl-actions-trigger');
+  const hitlActionsLabel = document.getElementById('hitl-actions-label');
+  const hitlItemConnect = document.getElementById('hitl-item-connect');
+  const hitlItemDisconnect = document.getElementById('hitl-item-disconnect');
   const baudSelect = document.getElementById('serial-baud-select');
   const consoleOverlay = document.getElementById('serial-console-modal');
   const btnCloseConsole = document.getElementById('btn-close-serial-console');
@@ -421,9 +495,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSendSerial = document.getElementById('btn-send-serial-cmd');
   const inputSerialCmd = document.getElementById('input-serial-cmd');
 
-  if (hitlActionSelect) {
-    hitlActionSelect.addEventListener('change', async (e) => {
-      const action = e.target.value;
+  document.querySelectorAll('#hitl-actions-dropdown .dropdown-item').forEach((item) => {
+    item.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const action = item.getAttribute('data-hitl-action');
+      if (hitlActionsDropdown) hitlActionsDropdown.classList.remove('open');
+
       if (action === 'CONNECT') {
         audio.init(); // unlock audio context on click
         const baud = baudSelect ? baudSelect.value : 115200;
@@ -431,39 +508,30 @@ document.addEventListener('DOMContentLoaded', () => {
           await serial.connect(baud);
         } catch (err) {
           alert(`No se pudo conectar al puerto Serial: ${err.message}`);
-          hitlActionSelect.value = 'CONNECT';
         }
       } else if (action === 'DISCONNECT') {
         await serial.disconnect();
       } else if (action === 'CONSOLE') {
         if (consoleOverlay) consoleOverlay.classList.add('active');
-        hitlActionSelect.value = serial.isConnected ? 'DISCONNECT' : 'CONNECT';
       }
     });
-  }
+  });
 
   function updateSerialUIStatus(status, details) {
-    if (!hitlActionSelect) return;
-    const connectOpt = hitlActionSelect.querySelector('option[value="CONNECT"]');
-    const disconnectOpt = hitlActionSelect.querySelector('option[value="DISCONNECT"]');
-
     if (status === 'CONNECTED') {
-      if (connectOpt) connectOpt.disabled = true;
-      if (disconnectOpt) {
-        disconnectOpt.disabled = false;
-        disconnectOpt.selected = true;
-      }
-      hitlActionSelect.style.color = 'var(--c-critical)';
+      if (hitlItemConnect) hitlItemConnect.style.display = 'none';
+      if (hitlItemDisconnect) hitlItemDisconnect.style.display = 'flex';
+      if (hitlActionsTrigger) hitlActionsTrigger.className = 'tactical-dropdown-btn danger';
+      if (hitlActionsLabel) hitlActionsLabel.textContent = 'ESP32 CONECTADO';
       setGlobalStatus('En linea');
     } else if (status === 'CONNECTING') {
+      if (hitlActionsLabel) hitlActionsLabel.textContent = 'CONECTANDO...';
       setGlobalStatus('Sin conexion');
     } else {
-      if (connectOpt) {
-        connectOpt.disabled = false;
-        connectOpt.selected = true;
-      }
-      if (disconnectOpt) disconnectOpt.disabled = true;
-      hitlActionSelect.style.color = 'var(--c-nominal)';
+      if (hitlItemConnect) hitlItemConnect.style.display = 'flex';
+      if (hitlItemDisconnect) hitlItemDisconnect.style.display = 'none';
+      if (hitlActionsTrigger) hitlActionsTrigger.className = 'tactical-dropdown-btn success';
+      if (hitlActionsLabel) hitlActionsLabel.textContent = 'HERRAMIENTAS SERIAL';
       setGlobalStatus('Sin conexion');
     }
   }
