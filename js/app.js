@@ -148,28 +148,223 @@ document.addEventListener('DOMContentLoaded', () => {
   const sitlControlsStrip = document.getElementById('sitl-controls-strip');
   const hitlControlsStrip = document.getElementById('hitl-controls-strip');
 
-  function setAppMode(mode) {
+  function setAppMode(mode, triggerModal = false) {
     state.setMode(mode);
     if (mode === 'SITL') {
       modeBtnSitl.className = 'mode-btn active';
       modeBtnHitl.className = 'mode-btn';
       sitlControlsStrip.style.display = 'flex';
       hitlControlsStrip.style.display = 'none';
-      sitl.start();
+      if (triggerModal) {
+        openSitlConfigModal();
+      } else {
+        sitl.start();
+      }
     } else {
       modeBtnSitl.className = 'mode-btn';
       modeBtnHitl.className = 'mode-btn active hitl';
       sitlControlsStrip.style.display = 'none';
       hitlControlsStrip.style.display = 'flex';
       sitl.stop();
+      closeSitlConfigModal();
     }
   }
 
-  if (modeBtnSitl) modeBtnSitl.addEventListener('click', () => setAppMode('SITL'));
+  // When clicking MODO SITL, open the configuration popup to verify/setup simulation parameters
+  if (modeBtnSitl) {
+    modeBtnSitl.addEventListener('click', () => {
+      setAppMode('SITL', true);
+    });
+  }
   if (modeBtnHitl) modeBtnHitl.addEventListener('click', () => setAppMode('HITL'));
 
+  // SITL Configuration Modal Elements
+  const modalConfig = document.getElementById('sitl-config-modal');
+  const btnCloseModalX = document.getElementById('btn-modal-close-x');
+  const btnCancelModal = document.getElementById('btn-modal-cancel');
+  const btnApplyModal = document.getElementById('btn-modal-apply');
+  const btnConfigToolbar = document.getElementById('sitl-btn-config');
+
+  const inputApogee = document.getElementById('cfg-apogee');
+  const inputChute = document.getElementById('cfg-chute-alt');
+  const inputMass = document.getElementById('cfg-mass');
+  const inputWindSpeed = document.getElementById('cfg-wind-speed');
+  const inputWindDir = document.getElementById('cfg-wind-dir');
+  const selectFreq = document.getElementById('cfg-freq');
+  const selectModalAnomaly = document.getElementById('cfg-anomaly');
+  const chkResetClock = document.getElementById('cfg-reset-clock');
+
+  function openSitlConfigModal() {
+    if (modalConfig) modalConfig.classList.add('active');
+  }
+
+  function closeSitlConfigModal() {
+    if (modalConfig) modalConfig.classList.remove('active');
+  }
+
+  if (btnConfigToolbar) btnConfigToolbar.addEventListener('click', openSitlConfigModal);
+  if (btnCloseModalX) btnCloseModalX.addEventListener('click', closeSitlConfigModal);
+  if (btnCancelModal) btnCancelModal.addEventListener('click', closeSitlConfigModal);
+
+  // Quick Preset Handlers
+  const presetStandard = document.getElementById('preset-btn-standard');
+  const presetLow = document.getElementById('preset-btn-low');
+  const presetWindy = document.getElementById('preset-btn-windy');
+  const presetHigh = document.getElementById('preset-btn-high');
+
+  if (presetStandard) {
+    presetStandard.addEventListener('click', () => {
+      if (inputApogee) inputApogee.value = 850;
+      if (inputChute) inputChute.value = 500;
+      if (inputMass) inputMass.value = 350;
+      if (inputWindSpeed) inputWindSpeed.value = 3.2;
+      if (inputWindDir) {
+        inputWindDir.value = 45;
+        updateWindCardinalLabel(45);
+      }
+      if (selectFreq) selectFreq.value = '2';
+      if (selectModalAnomaly) selectModalAnomaly.value = 'NONE';
+    });
+  }
+
+  if (presetLow) {
+    presetLow.addEventListener('click', () => {
+      if (inputApogee) inputApogee.value = 400;
+      if (inputChute) inputChute.value = 250;
+      if (inputMass) inputMass.value = 350;
+      if (inputWindSpeed) inputWindSpeed.value = 2.0;
+      if (inputWindDir) {
+        inputWindDir.value = 90;
+        updateWindCardinalLabel(90);
+      }
+      if (selectFreq) selectFreq.value = '2';
+      if (selectModalAnomaly) selectModalAnomaly.value = 'NONE';
+    });
+  }
+
+  if (presetWindy) {
+    presetWindy.addEventListener('click', () => {
+      if (inputApogee) inputApogee.value = 850;
+      if (inputChute) inputChute.value = 500;
+      if (inputMass) inputMass.value = 350;
+      if (inputWindSpeed) inputWindSpeed.value = 7.0;
+      if (inputWindDir) {
+        inputWindDir.value = 180;
+        updateWindCardinalLabel(180);
+      }
+      if (selectFreq) selectFreq.value = '2';
+      if (selectModalAnomaly) selectModalAnomaly.value = 'NONE';
+    });
+  }
+
+  if (presetHigh) {
+    presetHigh.addEventListener('click', () => {
+      if (inputApogee) inputApogee.value = 1200;
+      if (inputChute) inputChute.value = 700;
+      if (inputMass) inputMass.value = 320;
+      if (inputWindSpeed) inputWindSpeed.value = 4.5;
+      if (inputWindDir) {
+        inputWindDir.value = 315;
+        updateWindCardinalLabel(315);
+      }
+      if (selectFreq) selectFreq.value = '4';
+      if (selectModalAnomaly) selectModalAnomaly.value = 'NONE';
+    });
+  }
+
+  // Real-time GPS Weather Service Integration
+  const btnFetchWeather = document.getElementById('btn-fetch-weather');
+  const weatherFeedback = document.getElementById('weather-feedback-strip');
+  const windCardinalLabel = document.getElementById('cfg-wind-cardinal');
+
+  function updateWindCardinalLabel(deg) {
+    if (!windCardinalLabel) return;
+    const cardinal = window.WeatherService ? window.WeatherService.constructor.degreesToCardinal(deg) : '';
+    windCardinalLabel.textContent = `${deg}° (${cardinal})`;
+  }
+
+  if (inputWindDir) {
+    inputWindDir.addEventListener('input', (e) => {
+      updateWindCardinalLabel(Number(e.target.value) || 0);
+    });
+  }
+
+  if (btnFetchWeather) {
+    btnFetchWeather.addEventListener('click', async () => {
+      btnFetchWeather.disabled = true;
+      btnFetchWeather.textContent = '⏳ CONSULTANDO GPS & METEO...';
+      if (weatherFeedback) {
+        weatherFeedback.style.display = 'block';
+        weatherFeedback.style.color = 'var(--c-cyan)';
+        weatherFeedback.textContent = 'Solicitando coordenadas GPS del dispositivo y consultando servicio meteorológico...';
+      }
+
+      try {
+        const weather = await window.WeatherService.getLocalWeather();
+        if (inputWindSpeed) inputWindSpeed.value = weather.windSpeed_mps;
+        if (inputWindDir) inputWindDir.value = weather.windDirection_deg;
+        updateWindCardinalLabel(weather.windDirection_deg);
+
+        const cardinal = window.WeatherService.constructor.degreesToCardinal(weather.windDirection_deg);
+        if (weatherFeedback) {
+          weatherFeedback.style.display = 'block';
+          weatherFeedback.style.color = 'var(--c-nominal)';
+          weatherFeedback.innerHTML = `✓ <strong>METEO LOCAL RECUPERADA:</strong> [Lat: ${weather.latitude}°, Lon: ${weather.longitude}°] &bull; Viento: <strong>${weather.windSpeed_mps} m/s</strong> hacia <strong>${weather.windDirection_deg}° (${cardinal})</strong> &bull; Temp: ${weather.temperature_c}°C &bull; Presión: ${weather.surfacePressure_hpa} hPa`;
+        }
+      } catch (err) {
+        if (weatherFeedback) {
+          weatherFeedback.style.display = 'block';
+          weatherFeedback.style.color = 'var(--c-warning)';
+          weatherFeedback.textContent = `⚠ ${err.message} (Puedes ingresar la velocidad y dirección manualmente).`;
+        }
+      } finally {
+        btnFetchWeather.disabled = false;
+        btnFetchWeather.textContent = '📍 CONSULTAR VIENTO LOCAL (GPS)';
+      }
+    });
+  }
+
+  // Apply Modal Parameters and Start Simulation
+  if (btnApplyModal) {
+    btnApplyModal.addEventListener('click', () => {
+      const apogee = Number(inputApogee?.value || 850);
+      const chuteAlt = Number(inputChute?.value || 500);
+      const mass = Number(inputMass?.value || 350);
+      const windSpeed = Number(inputWindSpeed?.value || 3.2);
+      const windDir = Number(inputWindDir?.value || 45);
+      const freq = Number(selectFreq?.value || 2);
+      const anomaly = selectModalAnomaly?.value || 'NONE';
+
+      sitl.configure({
+        apogeeTarget_m: apogee,
+        chuteDeployAlt_m: chuteAlt,
+        massGrams: mass,
+        windSpeed_mps: windSpeed,
+        windDirection_deg: windDir,
+        frequencyHz: freq,
+        anomaly: anomaly
+      });
+
+      // Synchronize anomaly dropdown in toolbar
+      if (anomalySelect) {
+        anomalySelect.value = anomaly;
+      }
+
+      // Reset mission state and timer if checked
+      if (chkResetClock && chkResetClock.checked) {
+        sitl.reset();
+        missionStartTime = Date.now();
+        state.resetMission();
+      }
+
+      setAppMode('SITL', false);
+      sitl.start();
+      closeSitlConfigModal();
+    });
+  }
+
   // Start in SITL mode by default as per Phase 1
-  setAppMode('SITL');
+  setAppMode('SITL', false);
 
   // SITL Simulation Controls
   const btnSitlPlay = document.getElementById('sitl-btn-play');

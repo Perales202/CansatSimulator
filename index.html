@@ -74,6 +74,7 @@
           <button class="btn-tactical primary" id="sitl-btn-play" title="Iniciar Simulación">▶ SIM</button>
           <button class="btn-tactical" id="sitl-btn-pause" title="Pausar Simulación">⏸ PAUSA</button>
           <button class="btn-tactical" id="sitl-btn-reset" title="Reiniciar Perfil de Vuelo">↺ REINICIAR</button>
+          <button class="btn-tactical" id="sitl-btn-config" title="Configurar Parámetros de Misión">⚙ PARÁMETROS</button>
           
           <select id="sitl-anomaly-select" class="table-input" style="font-size:10px; padding:3px 6px;">
             <option value="NONE">Inyección de Fallos: Ninguno</option>
@@ -192,10 +193,134 @@ Esperando flujo asíncrono desde ESP32...
     </div>
   </div>
 
+  <!-- SITL MISSION PARAMETERS CONFIGURATION MODAL -->
+  <div class="tactical-modal-backdrop" id="sitl-config-modal">
+    <div class="tactical-modal-dialog">
+      <div class="modal-header-strip">
+        <div class="panel-title">
+          <span class="panel-title-icon">⚙</span>
+          <span>PARÁMETROS DE MISIÓN // SIMULADOR FÍSICO SITL</span>
+        </div>
+        <button class="btn-tactical danger" id="btn-modal-close-x" style="padding:2px 7px; font-size:10px;">✕</button>
+      </div>
+
+      <div class="modal-body-content">
+        <!-- Quick Presets -->
+        <div class="modal-presets-strip">
+          <span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-family:var(--font-display);">PRESETS RÁPIDOS:</span>
+          <button class="btn-tactical" id="preset-btn-standard" style="font-size:10px; padding:3px 8px;">Estándar (850m)</button>
+          <button class="btn-tactical" id="preset-btn-low" style="font-size:10px; padding:3px 8px;">Baja Altura (400m)</button>
+          <button class="btn-tactical" id="preset-btn-windy" style="font-size:10px; padding:3px 8px;">Viento Fuerte (7m/s)</button>
+          <button class="btn-tactical" id="preset-btn-high" style="font-size:10px; padding:3px 8px;">Gran Altitud (1200m)</button>
+        </div>
+
+        <!-- 2-Column Grid Form -->
+        <div class="modal-grid-form">
+          <!-- 1. Apogee target -->
+          <div class="modal-field-group">
+            <label class="modal-field-label">
+              <span>Apogeo Máximo Objetivo</span>
+              <span class="unit">METROS</span>
+            </label>
+            <input type="number" id="cfg-apogee" class="table-input" value="850" min="100" max="5000" step="50">
+          </div>
+
+          <!-- 2. Parachute Deployment Alt -->
+          <div class="modal-field-group">
+            <label class="modal-field-label">
+              <span>Despliegue de Paracaídas</span>
+              <span class="unit">METROS</span>
+            </label>
+            <input type="number" id="cfg-chute-alt" class="table-input" value="500" min="50" max="3000" step="25">
+          </div>
+
+          <!-- 3. CanSat Mass -->
+          <div class="modal-field-group">
+            <label class="modal-field-label">
+              <span>Masa del CanSat</span>
+              <span class="unit">GRAMOS</span>
+            </label>
+            <input type="number" id="cfg-mass" class="table-input" value="350" min="100" max="2000" step="10">
+          </div>
+
+          <!-- 4. Wind Speed & Direction Header with GPS Action -->
+          <div style="grid-column: 1 / 3; display:flex; align-items:center; justify-content:space-between; margin-top:2px; margin-bottom:-4px;">
+            <span style="font-size:10px; color:var(--text-secondary); font-family:var(--font-display); font-weight:700; text-transform:uppercase;">CONDICIONES DE VIENTO & ATMÓSFERA</span>
+            <button class="btn-tactical" id="btn-fetch-weather" type="button" style="font-size:9.5px; padding:2px 8px; color:var(--c-cyan); border-color:var(--border-focus);">
+              📍 CONSULTAR VIENTO LOCAL (GPS)
+            </button>
+          </div>
+
+          <!-- Wind Speed -->
+          <div class="modal-field-group">
+            <label class="modal-field-label">
+              <span>Velocidad del Viento</span>
+              <span class="unit">m/s</span>
+            </label>
+            <input type="number" id="cfg-wind-speed" class="table-input" value="3.2" min="0" max="25" step="0.5">
+          </div>
+
+          <!-- Wind Direction (Degrees) -->
+          <div class="modal-field-group">
+            <label class="modal-field-label">
+              <span>Dirección del Viento</span>
+              <span class="unit" id="cfg-wind-cardinal">45° (NE)</span>
+            </label>
+            <input type="number" id="cfg-wind-dir" class="table-input" value="45" min="0" max="359" step="5">
+          </div>
+
+          <!-- Meteorological feedback strip -->
+          <div id="weather-feedback-strip" style="grid-column: 1 / 3; display:none; background:rgba(0,229,255,0.08); border:1px solid var(--border-tactical); padding:5px 8px; border-radius:3px; font-size:10px; font-family:var(--font-mono); color:var(--c-cyan);">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- 6. Telemetry Frequency (Hz) -->
+          <div class="modal-field-group">
+            <label class="modal-field-label">
+              <span>Frecuencia de Muestreo</span>
+              <span class="unit">Hz (PAQUETES/SEG)</span>
+            </label>
+            <select id="cfg-freq" class="table-input">
+              <option value="1">1 Hz (1 paquete / seg)</option>
+              <option value="2" selected>2 Hz (Estándar CanSat)</option>
+              <option value="4">4 Hz (Alta Tasa)</option>
+              <option value="5">5 Hz (Máxima Frecuencia)</option>
+            </select>
+          </div>
+
+          <!-- 7. Initial Anomaly Condition -->
+          <div class="modal-field-group" style="grid-column: 1 / 3;">
+            <label class="modal-field-label">
+              <span>Condición / Anomalía Inicial</span>
+              <span class="unit">SIMULACIÓN DE FALLOS</span>
+            </label>
+            <select id="cfg-anomaly" class="table-input">
+              <option value="NONE" selected>Vuelo Nominal (Sin Anomalías)</option>
+              <option value="PARACHUTE_FAILURE">Fallo en Despliegue de Paracaídas</option>
+              <option value="BARO_SPIKE">Pico Errático en Sensor Barométrico (BMP280)</option>
+              <option value="SIGNAL_DROP">Degradación Crítica de Enlace LoRa (RSSI/SNR)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-secondary); margin-top:4px;">
+          <input type="checkbox" id="cfg-reset-clock" checked style="cursor:pointer;">
+          <label for="cfg-reset-clock" style="cursor:pointer;">Reiniciar cronómetro de misión (MET) y telemetría al iniciar</label>
+        </div>
+      </div>
+
+      <div class="modal-footer-actions">
+        <button class="btn-tactical" id="btn-modal-cancel">CANCELAR</button>
+        <button class="btn-tactical primary" id="btn-modal-apply" style="font-size:12px; padding:7px 16px;">▶ INICIAR SIMULACIÓN</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CORE SCRIPTS & ARCHITECTURAL MODULES -->
   <script src="js/state.js"></script>
   <script src="js/modules/telemetry_parser.js"></script>
   <script src="js/modules/physics_sitl.js"></script>
+  <script src="js/modules/weather_service.js"></script>
   <script src="js/modules/web_serial.js"></script>
   <script src="js/modules/audio_system.js"></script>
   <script src="js/modules/multi_screen.js"></script>

@@ -57,6 +57,21 @@ class PhysicsSITL {
     };
   }
 
+  /**
+   * Configure physical mission parameters from the SITL popup dialog
+   */
+  configure(params = {}) {
+    if (params.apogeeTarget_m !== undefined) this.state.apogeeTarget_m = Number(params.apogeeTarget_m);
+    if (params.chuteDeployAlt_m !== undefined) this.state.chuteDeployAlt_m = Number(params.chuteDeployAlt_m);
+    if (params.massGrams !== undefined) this.CANSAT_MASS = Number(params.massGrams) / 1000;
+    if (params.windSpeed_mps !== undefined) this.state.windSpeed_mps = Number(params.windSpeed_mps);
+    if (params.windDirection_deg !== undefined) this.state.windDirection_deg = Number(params.windDirection_deg);
+    if (params.frequencyHz !== undefined) this.setFrequency(Number(params.frequencyHz));
+    if (params.anomaly !== undefined) {
+      this.state.anomaly = (params.anomaly === 'NONE' || !params.anomaly) ? null : params.anomaly;
+    }
+  }
+
   start() {
     if (this.running) return;
     this.running = true;
