@@ -55,6 +55,10 @@ class PhysicsSITL {
       const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
       return z0 * stdev + mean;
     };
+
+    // NASA 42 / cFS Attitude Dynamics & Kalman Filter Modules
+    this.attitude = window.AttitudeDynamics ? new window.AttitudeDynamics(this.CANSAT_MASS) : null;
+    this.kalman = window.BaroInertialKalmanFilter ? new window.BaroInertialKalmanFilter() : null;
   }
 
   /**
@@ -113,6 +117,9 @@ class PhysicsSITL {
     this.state.elapsedTime_s = 0;
     this.state.parachuteDeployed = false;
     this.state.anomaly = null;
+
+    if (this.attitude) this.attitude.reset();
+    if (this.kalman) this.kalman.reset(0);
   }
 
   /**
@@ -122,8 +129,13 @@ class PhysicsSITL {
     const dt = 1 / this.frequencyHz;
     this.state.elapsedTime_s += dt;
 
-    // State Machine update
+    // State Machine update (linear aerodynamics & gravity)
     this.updateFlightMechanics(dt);
+
+    // 6-DOF Rotational Dynamics propagation (Euler Equations + Quaternions)
+    if (this.attitude) {
+      this.attitude.step(dt, this.state.phase, this.state.windSpeed_mps);
+    }
 
     // Calculate synthetic sensor readouts from physical state
     const packet = this.generateSyntheticTelemetry();
@@ -290,7 +302,19 @@ class PhysicsSITL {
 
     const gridRefStr = this.formatGridRef(s.posX_m, s.posY_m);
 
-    // Return exact PRD JSON format
+    // 6-DOF IMU Sensor Data (Euler angles, Quaternions, Accelerometer, Gyroscope)
+    const imuData = this.attitude 
+      ? this.attitude.getSyntheticIMU(s.acceleration_mps2, this.GRAVITY)
+      : null;
+
+    // Baro-Inertial Kalman Filter Fusion (Altitude & Vertical Speed)
+    let kalmanData = null;
+    if (this.kalman && imuData) {
+      this.kalman.predict(1 / this.frequencyHz, imuData.accel_mps2.z - this.GRAVITY);
+      kalmanData = this.kalman.update(measuredAlt);
+    }
+
+    // Return exact PRD JSON format + extended attitude/inertial sensors
     return {
       timestamp: Math.floor(Date.now() / 1000),
       status: packetStatus,
@@ -304,7 +328,9 @@ class PhysicsSITL {
           rssi_lora: Math.round(baseRssi),
           snr: Number(baseSnr.toFixed(1)),
           grid_ref: gridRefStr
-        }
+        },
+        imu: imuData,
+        kalman: kalmanData
       }
     };
   }

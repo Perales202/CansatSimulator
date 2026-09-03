@@ -63,11 +63,19 @@ class TacticalRadarComponent {
         <div class="attitude-hud-mini">
           <canvas class="attitude-canvas" id="canvas-attitude-hud"></canvas>
         </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:9.5px; font-family:var(--font-mono); padding:1px 2px 0 2px;">
+          <span style="color:var(--text-muted);">ACTITUD: <strong id="attitude-euler-val" style="color:var(--c-cyan);">R: 0.0° | P: 0.0° | Y: 0.0°</strong></span>
+          <span style="color:var(--text-muted);">ALT KALMAN: <strong id="attitude-kalman-val" style="color:var(--c-nominal);">0.0 m</strong></span>
+        </div>
       </div>
     `;
   }
 
   initCanvas() {
+    this.attitudeEuler = { roll_deg: 0, pitch_deg: 0, yaw_deg: 0 };
+    this.kalmanAlt = 0;
+
     this.canvas = document.getElementById('canvas-tactical-radar');
     this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
 
@@ -79,7 +87,9 @@ class TacticalRadarComponent {
       dist: document.getElementById('radar-dist'),
       elev: document.getElementById('radar-elev'),
       gridRef: document.getElementById('grid-ref-text'),
-      cartesian: document.getElementById('cartesian-offset')
+      cartesian: document.getElementById('cartesian-offset'),
+      attitude: document.getElementById('attitude-euler-val'),
+      kalman: document.getElementById('attitude-kalman-val')
     };
 
     window.addEventListener('resize', () => this.resizeCanvas());
@@ -143,6 +153,19 @@ class TacticalRadarComponent {
       const sx = parsed.x >= 0 ? `+${parsed.x.toFixed(1)}` : parsed.x.toFixed(1);
       const sy = parsed.y >= 0 ? `+${parsed.y.toFixed(1)}` : parsed.y.toFixed(1);
       this.readouts.cartesian.textContent = `X: ${sx}m | Y: ${sy}m`;
+    }
+    // Extract 6-DOF Attitude & Kalman Filter data if available
+    if (packet.sensors?.imu?.euler_deg) {
+      this.attitudeEuler = packet.sensors.imu.euler_deg;
+      if (this.readouts.attitude) {
+        this.readouts.attitude.textContent = `R: ${this.attitudeEuler.roll_deg}° | P: ${this.attitudeEuler.pitch_deg}° | Y: ${this.attitudeEuler.yaw_deg}°`;
+      }
+    }
+    if (packet.sensors?.kalman) {
+      this.kalmanAlt = packet.sensors.kalman.filteredAltitude_m;
+      if (this.readouts.kalman) {
+        this.readouts.kalman.textContent = `${this.kalmanAlt.toFixed(1)} m`;
+      }
     }
   }
 
@@ -299,56 +322,184 @@ class TacticalRadarComponent {
 
     const w = canvas.width;
     const h = canvas.height;
-    const cx = w / 2;
-    const cy = h / 2;
-
     ctx.clearRect(0, 0, w, h);
 
-    // Simulated pitch/roll derived smoothly from horizontal velocity
-    const roll = Math.sin(Date.now() / 1800) * 0.12; // simulated slight oscillation
-    const pitch = (this.target.elevation / 90) * 12;
+    const dpr = window.devicePixelRatio || 1;
 
+    // Split view: Left = 60% Horizon, Right = 40% 3D Wireframe CanSat
+    const horizonWidth = w * 0.62;
+    const wireframeWidth = w - horizonWidth;
+
+    // --- 1. Artificial Horizon (Left Side) ---
     ctx.save();
-    ctx.translate(cx, cy + pitch);
-    ctx.rotate(roll);
-
-    // Artificial Horizon Pitch Ladder
-    ctx.strokeStyle = 'rgba(0, 229, 255, 0.7)';
-    ctx.lineWidth = 1.5;
-
-    // Center horizon bar
     ctx.beginPath();
-    ctx.moveTo(-45, 0);
-    ctx.lineTo(45, 0);
+    ctx.rect(0, 0, horizonWidth, h);
+    ctx.clip();
+
+    const hcx = horizonWidth / 2;
+    const hcy = h / 2;
+
+    const rollRad = (this.attitudeEuler.roll_deg * Math.PI) / 180;
+    const pitchOffset = (this.attitudeEuler.pitch_deg / 90) * (h * 0.7);
+
+    ctx.translate(hcx, hcy + pitchOffset);
+    ctx.rotate(rollRad);
+
+    // Horizon line
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.85)';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(-horizonWidth, 0);
+    ctx.lineTo(horizonWidth, 0);
     ctx.stroke();
 
-    // Pitch ticks
-    [-15, 15].forEach(offset => {
+    // Pitch ladder ticks
+    const tickStep = 18 * dpr;
+    [-2, -1, 1, 2].forEach((level) => {
+      const y = level * tickStep;
+      const len = (Math.abs(level) === 1 ? 16 : 28) * dpr;
       ctx.beginPath();
-      ctx.moveTo(-20, offset);
-      ctx.lineTo(20, offset);
+      ctx.moveTo(-len / 2, y);
+      ctx.lineTo(len / 2, y);
       ctx.stroke();
-    });
 
+      ctx.fillStyle = 'rgba(0, 229, 255, 0.6)';
+      ctx.font = `${7 * dpr}px monospace`;
+      ctx.fillText(`${level * 10}°`, len / 2 + 4, y + 2.5);
+    });
     ctx.restore();
 
     // Fixed Aircraft / CanSat Crosshair
     ctx.strokeStyle = '#ffd166';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * dpr;
     ctx.beginPath();
-    ctx.moveTo(cx - 15, cy);
-    ctx.lineTo(cx - 5, cy);
-    ctx.moveTo(cx + 5, cy);
-    ctx.lineTo(cx + 15, cy);
-    ctx.moveTo(cx, cy - 5);
-    ctx.lineTo(cx, cy + 5);
+    ctx.moveTo(hcx - 14 * dpr, hcy);
+    ctx.lineTo(hcx - 4 * dpr, hcy);
+    ctx.moveTo(hcx + 4 * dpr, hcy);
+    ctx.lineTo(hcx + 14 * dpr, hcy);
+    ctx.moveTo(hcx, hcy - 4 * dpr);
+    ctx.lineTo(hcx, hcy + 4 * dpr);
     ctx.stroke();
 
-    // HUD Text
+    // Divider Line between Horizon and 3D Model
+    ctx.strokeStyle = 'rgba(30, 41, 59, 0.8)';
+    ctx.lineWidth = 1 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(horizonWidth, 0);
+    ctx.lineTo(horizonWidth, h);
+    ctx.stroke();
+
+    // Horizon Label
     ctx.fillStyle = '#64748b';
-    ctx.font = `${8 * (window.devicePixelRatio || 1)}px monospace`;
+    ctx.font = `${7.5 * dpr}px monospace`;
     ctx.textAlign = 'left';
-    ctx.fillText('HORIZONTE ARTIFICIAL // INERCIA', 6, 12);
+    ctx.fillText('HORIZONTE 6-DOF', 6 * dpr, 11 * dpr);
+
+    // --- 2. 3D Wireframe CanSat Cylinder (Right Side) ---
+    const wcx = horizonWidth + wireframeWidth / 2;
+    const wcy = h / 2;
+
+    this.draw3DCanSatWireframe(ctx, wcx, wcy, dpr);
+  }
+
+  draw3DCanSatWireframe(ctx, cx, cy, dpr) {
+    const roll = (this.attitudeEuler.roll_deg * Math.PI) / 180;
+    const pitch = (this.attitudeEuler.pitch_deg * Math.PI) / 180;
+    const yaw = (this.attitudeEuler.yaw_deg * Math.PI) / 180;
+
+    const r = 16 * dpr;
+    const halfH = 24 * dpr;
+    const numPoints = 10;
+
+    // 3D Rotation function (Yaw * Pitch * Roll)
+    const rotate3D = (x, y, z) => {
+      // Roll around X
+      let y1 = y * Math.cos(roll) - z * Math.sin(roll);
+      let z1 = y * Math.sin(roll) + z * Math.cos(roll);
+      let x1 = x;
+
+      // Pitch around Y
+      let x2 = x1 * Math.cos(pitch) + z1 * Math.sin(pitch);
+      let z2 = -x1 * Math.sin(pitch) + z1 * Math.cos(pitch);
+      let y2 = y1;
+
+      // Yaw around Z
+      let x3 = x2 * Math.cos(yaw) - y2 * Math.sin(yaw);
+      let y3 = x2 * Math.sin(yaw) + y2 * Math.cos(yaw);
+      let z3 = z2;
+
+      // Perspective projection
+      const dist = 180 * dpr;
+      const fov = dist / (dist + z3);
+      return {
+        px: cx + x3 * fov,
+        py: cy - y3 * fov, // Invert Y for screen
+        z: z3
+      };
+    };
+
+    const topPoints = [];
+    const bottomPoints = [];
+
+    for (let i = 0; i < numPoints; i++) {
+      const theta = (i / numPoints) * Math.PI * 2;
+      const x = r * Math.cos(theta);
+      const z = r * Math.sin(theta);
+      topPoints.push(rotate3D(x, halfH, z));
+      bottomPoints.push(rotate3D(x, -halfH, z));
+    }
+
+    // Draw Cylinder Body Wireframe
+    ctx.save();
+    ctx.lineWidth = 1.2 * dpr;
+    ctx.strokeStyle = '#00e5ff';
+    ctx.shadowColor = 'rgba(0, 229, 255, 0.4)';
+    ctx.shadowBlur = 4;
+
+    // Top Circle
+    ctx.beginPath();
+    topPoints.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.px, p.py);
+      else ctx.lineTo(p.px, p.py);
+    });
+    ctx.closePath();
+    ctx.stroke();
+
+    // Bottom Circle
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
+    ctx.beginPath();
+    bottomPoints.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.px, p.py);
+      else ctx.lineTo(p.px, p.py);
+    });
+    ctx.closePath();
+    ctx.stroke();
+
+    // Vertical Ribs / Struts
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+    for (let i = 0; i < numPoints; i += 2) {
+      ctx.beginPath();
+      ctx.moveTo(topPoints[i].px, topPoints[i].py);
+      ctx.lineTo(bottomPoints[i].px, bottomPoints[i].py);
+      ctx.stroke();
+    }
+
+    // Top Center Antenna Indicator
+    const antennaTop = rotate3D(0, halfH + 12 * dpr, 0);
+    const antennaBase = rotate3D(0, halfH, 0);
+    ctx.strokeStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.moveTo(antennaBase.px, antennaBase.py);
+    ctx.lineTo(antennaTop.px, antennaTop.py);
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = '#64748b';
+    ctx.font = `${7 * dpr}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('3D CANSAT', cx, cy + halfH + 14 * dpr);
+
+    ctx.restore();
   }
 }
 

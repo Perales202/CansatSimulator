@@ -104,7 +104,7 @@
 
 /* Artificial Horizon / Mini Attitude HUD */
 .attitude-hud-mini {
-  height: 80px;
+  height: 105px;
   background: #090e18;
   border: 1px solid var(--border-tactical);
   border-radius: 3px;
