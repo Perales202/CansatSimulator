@@ -180,7 +180,7 @@ class PhysicsSITL {
       case 'FREEFALL':
         // Gravitational descent with body drag
         const rho = this.calculateAirDensity(s.altitude_m);
-        const bodyDrag = 0.5 * rho * Math.pow(s.velocity_mps, 2) * s.BODY_DRAG_COEFF * s.BODY_AREA;
+        const bodyDrag = 0.5 * rho * Math.pow(s.velocity_mps, 2) * this.BODY_DRAG_COEFF * this.BODY_AREA;
         const dragAcc = bodyDrag / this.CANSAT_MASS;
 
         s.acceleration_mps2 = -this.GRAVITY + (s.velocity_mps < 0 ? dragAcc : -dragAcc);
@@ -201,15 +201,22 @@ class PhysicsSITL {
         break;
 
       case 'PARACHUTE':
-        // Controlled descent with parachute
-        const airRho = this.calculateAirDensity(s.altitude_m);
-        const v = s.velocity_mps; // negative downward
-        const chuteDrag = 0.5 * airRho * Math.pow(v, 2) * this.CHUTE_DRAG_COEFF * this.CHUTE_AREA;
-        const netAcc = -this.GRAVITY + (chuteDrag / this.CANSAT_MASS);
+        // Controlled descent with parachute (Sub-stepped to prevent integration overshoot)
+        const subSteps = Math.max(1, Math.ceil(dt / 0.01));
+        const dtSub = dt / subSteps;
 
-        s.acceleration_mps2 = netAcc;
-        s.velocity_mps += netAcc * dt;
-        s.altitude_m += s.velocity_mps * dt;
+        for (let i = 0; i < subSteps; i++) {
+          const airRho = this.calculateAirDensity(s.altitude_m);
+          const v = s.velocity_mps;
+          const chuteDrag = 0.5 * airRho * (v * v) * this.CHUTE_DRAG_COEFF * this.CHUTE_AREA;
+          const dragAcc = chuteDrag / this.CANSAT_MASS;
+
+          // Drag opposes motion direction
+          const netAcc = -this.GRAVITY + (v < 0 ? dragAcc : -dragAcc);
+          s.acceleration_mps2 = netAcc;
+          s.velocity_mps += netAcc * dtSub;
+          s.altitude_m += s.velocity_mps * dtSub;
+        }
 
         // Wind drift translation
         const windRad = (s.windDirection_deg * Math.PI) / 180;

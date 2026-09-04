@@ -140,82 +140,98 @@ class AttitudeDynamics {
    * I * dw/dt + w x (I * w) = Tau
    */
   step(dt, flightPhase, windSpeedMps = 0) {
-    let torque = [0, 0, 0];
-
-    switch (flightPhase) {
-      case 'PAD':
-        // Minimal ground vibrations
-        torque = [
-          (Math.random() - 0.5) * 0.0002,
-          (Math.random() - 0.5) * 0.0002,
-          (Math.random() - 0.5) * 0.0001
-        ];
-        break;
-
-      case 'ASCENT':
-        // Spin stabilization along Z axis (~1-2 rev/sec) + aerodynamic buffetting
-        torque = [
-          (Math.random() - 0.5) * 0.005,
-          (Math.random() - 0.5) * 0.005,
-          0.02 // spin torque
-        ];
-        break;
-
-      case 'APOGEE':
-      case 'FREEFALL':
-        // Tumbling in free fall (unstable aerodynamically without parachute)
-        torque = [
-          (Math.random() - 0.5) * 0.025,
-          (Math.random() - 0.5) * 0.025,
-          (Math.random() - 0.5) * 0.015
-        ];
-        break;
-
-      case 'PARACHUTE':
-        // Parachute acts as a spherical pendulum with aerodynamic restoring torque
-        // Restoring torque pulls z-axis towards vertical (upward)
-        const euler = this.q.toEulerDegrees();
-        const pitchRad = (euler.pitch_deg * Math.PI) / 180;
-        const rollRad = (euler.roll_deg * Math.PI) / 180;
-
-        // Pendulum restoring torque: Tau = -k * theta - b * omega
-        const kRestoring = 0.045; // Spring stiffness from parachute riser
-        const bDamping = 0.028;   // Aerodynamic rotational damping
-
-        // Wind gust perturbation
-        const gustTorque = (windSpeedMps / 10) * (Math.sin(Date.now() / 600) * 0.015);
-
-        torque[0] = -kRestoring * rollRad - bDamping * this.omega[0] + gustTorque;
-        torque[1] = -kRestoring * pitchRad - bDamping * this.omega[1] + gustTorque * 0.7;
-        torque[2] = -bDamping * 0.5 * this.omega[2]; // gentle yaw spin damping
-        break;
-
-      case 'LANDED':
-        this.omega = [0, 0, 0];
-        return;
+    if (flightPhase === 'LANDED') {
+      this.omega = [0, 0, 0];
+      return;
     }
 
-    // Euler's rotational acceleration:
-    // dwx/dt = (Tau_x - (Izz - Iyy) * wy * wz) / Ixx
-    // dwy/dt = (Tau_y - (Ixx - Izz) * wx * wz) / Iyy
-    // dwz/dt = (Tau_z - (Iyy - Ixx) * wx * wy) / Izz
-    const [wx, wy, wz] = this.omega;
+    if (flightPhase === 'PAD') {
+      this.omega = [0, 0, 0];
+      this.q = new Quaternion(1, 0, 0, 0);
+      return;
+    }
 
-    const alphaX = (torque[0] - (this.Izz - this.Iyy) * wy * wz) / this.Ixx;
-    const alphaY = (torque[1] - (this.Ixx - this.Izz) * wx * wz) / this.Iyy;
-    const alphaZ = (torque[2] - (this.Iyy - this.Ixx) * wx * wy) / this.Izz;
+    // Sub-stepping for unconditional numerical stability:
+    // With small spacecraft moments of inertia (I ~ 0.0004 kg*m^2), dt must be <= 5ms
+    // to prevent stiffness-induced Euler divergence.
+    const subSteps = Math.max(1, Math.ceil(dt / 0.005));
+    const dtSub = dt / subSteps;
 
-    // Numerical integration of angular velocity
-    this.omega[0] += alphaX * dt;
-    this.omega[1] += alphaY * dt;
-    this.omega[2] += alphaZ * dt;
+    for (let s = 0; s < subSteps; s++) {
+      let torque = [0, 0, 0];
+      const euler = this.q.toEulerDegrees();
+      const rollRad = (euler.roll_deg * Math.PI) / 180;
+      const pitchRad = (euler.pitch_deg * Math.PI) / 180;
 
-    // Kinematic propagation of orientation quaternion
-    this.q.integrateAngularVelocity(this.omega, dt);
+      switch (flightPhase) {
+        case 'ASCENT':
+          // Rocket fin aerodynamic restoring torque: aligns nose with ascent velocity vector
+          // + spin-stabilization along longitudinal Z-axis with aerodynamic drag limiting spin to ~1 rev/sec
+          const kAscent = 0.012;
+          const bAscent = 0.004;
+          torque[0] = -kAscent * rollRad - bAscent * this.omega[0] + (Math.random() - 0.5) * 0.0002;
+          torque[1] = -kAscent * pitchRad - bAscent * this.omega[1] + (Math.random() - 0.5) * 0.0002;
+          // Spin torque with aerodynamic drag ceiling: Tau_z = k_spin * (targetOmega - wz)
+          const targetSpinWz = 6.28; // ~1 rev/sec = 6.28 rad/s
+          torque[2] = 0.0012 * (targetSpinWz - this.omega[2]);
+          break;
+
+        case 'APOGEE':
+          // Separation transition: mild tumble
+          torque[0] = (Math.random() - 0.5) * 0.001 - 0.001 * this.omega[0];
+          torque[1] = (Math.random() - 0.5) * 0.001 - 0.001 * this.omega[1];
+          torque[2] = -0.0005 * this.omega[2];
+          break;
+
+        case 'FREEFALL':
+          // Uncontrolled tumble in free fall without parachute, air drag dampens extreme rates
+          const tumbleTorque = 0.002;
+          torque[0] = (Math.random() - 0.5) * tumbleTorque - 0.001 * this.omega[0];
+          torque[1] = (Math.random() - 0.5) * tumbleTorque - 0.001 * this.omega[1];
+          torque[2] = (Math.random() - 0.5) * tumbleTorque * 0.5 - 0.0008 * this.omega[2];
+          break;
+
+        case 'PARACHUTE':
+          // Spherical pendulum with aerodynamic restoring torque & wind drift offset
+          // Restoring stiffness from parachute riser: pulls CanSat upright (Roll -> 0, Pitch -> 0)
+          const kChute = 0.008;  // Natural frequency ~ 4 rad/s (~0.65 Hz pendulum)
+          const bChute = 0.0045; // Critical damping ratio ~ 0.73 (well-damped upright settling)
+
+          // Wind induced steady tilt and gentle harmonic swaying
+          const windDriftTilt = (windSpeedMps / 12) * 0.08; // ~3 to 5 deg steady tilt in wind
+          const gustOscillation = Math.sin(Date.now() / 900 + s * dtSub) * 0.0004;
+
+          torque[0] = -kChute * (rollRad - windDriftTilt) - bChute * this.omega[0] + gustOscillation;
+          torque[1] = -kChute * pitchRad - bChute * this.omega[1] + gustOscillation * 0.6;
+          torque[2] = -0.002 * this.omega[2]; // Gentle yaw spin damping
+          break;
+      }
+
+      // Euler's rotational equations of motion:
+      // I * dw/dt + w x (I * w) = Tau
+      const [wx, wy, wz] = this.omega;
+
+      const alphaX = (torque[0] - (this.Izz - this.Iyy) * wy * wz) / this.Ixx;
+      const alphaY = (torque[1] - (this.Ixx - this.Izz) * wx * wz) / this.Iyy;
+      const alphaZ = (torque[2] - (this.Iyy - this.Ixx) * wx * wy) / this.Izz;
+
+      // Integrate angular velocity with physical limits
+      this.omega[0] += Math.max(-120, Math.min(120, alphaX)) * dtSub;
+      this.omega[1] += Math.max(-120, Math.min(120, alphaY)) * dtSub;
+      this.omega[2] += Math.max(-120, Math.min(120, alphaZ)) * dtSub;
+
+      // Realistic physical angular rate clamps: max 6 rad/s (~340 deg/s) for pitch/roll
+      this.omega[0] = Math.max(-6.0, Math.min(6.0, this.omega[0]));
+      this.omega[1] = Math.max(-6.0, Math.min(6.0, this.omega[1]));
+      this.omega[2] = Math.max(-15.0, Math.min(15.0, this.omega[2]));
+
+      // Kinematic propagation of orientation quaternion
+      this.q.integrateAngularVelocity(this.omega, dtSub);
+    }
 
     // Random walk of IMU bias (Allan variance model from NASA 42)
     for (let i = 0; i < 3; i++) {
-      this.gyroBias[i] += (Math.random() - 0.5) * 0.00002;
+      this.gyroBias[i] += (Math.random() - 0.5) * 0.00001;
     }
   }
 
