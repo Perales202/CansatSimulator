@@ -316,7 +316,7 @@ class PhysicsSITL {
 
     // Return exact PRD JSON format + extended attitude/inertial sensors
     return {
-      timestamp: Math.floor(Date.now() / 1000),
+      timestamp: Number((Date.now() / 1000).toFixed(2)),
       status: packetStatus,
       sensors: {
         bmp280: {

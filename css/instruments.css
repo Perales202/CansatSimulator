@@ -73,7 +73,7 @@
   stroke: var(--c-cyan);
   stroke-width: 8;
   stroke-linecap: round;
-  stroke-dasharray: 283; /* 2 * PI * 45 */
+  stroke-dasharray: 251.2; /* Radius 40: 2 * PI * 40 = 251.3 */
   stroke-dashoffset: 70;
   transition: stroke-dashoffset 0.25s cubic-bezier(0.1, 0.7, 0.1, 1), stroke 0.3s ease;
   filter: drop-shadow(0 0 4px var(--c-cyan-glow));
@@ -106,6 +106,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .dial-center-pin {
@@ -150,6 +151,37 @@
   justify-content: center;
   text-align: center;
   pointer-events: none;
+}
+
+/* Authentic Kollsman Sub-Window Style for Altimeter */
+.altimeter-readout {
+  bottom: 12px;
+  background: rgba(8, 12, 20, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 3px;
+  padding: 1px 6px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+  z-index: 6;
+}
+
+.altimeter-readout .readout-primary {
+  font-size: 13px;
+}
+
+.altimeter-readout .readout-sub {
+  font-size: 8px;
+}
+
+/* Range limits indicators at gauge arc bases */
+.gauge-limits-row {
+  display: flex;
+  justify-content: space-between;
+  width: 90px;
+  margin-top: -6px;
+  margin-bottom: 2px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  color: var(--text-muted);
 }
 
 .readout-primary {

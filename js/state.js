@@ -100,7 +100,9 @@ class GroundStationState {
     this.previousPacket = this.currentPacket;
     this.currentPacket = packet;
     this.metrics.packetCount++;
-    this.metrics.lastPacketTime = Date.now();
+    const now = Date.now();
+    const dtReal = this.metrics.lastPacketTime ? Math.max(0.01, (now - this.metrics.lastPacketTime) / 1000) : 0.5;
+    this.metrics.lastPacketTime = now;
 
     // Ring buffer maintenance
     this.telemetryHistory.push(packet);
@@ -113,17 +115,43 @@ class GroundStationState {
       this.recording.recordedPackets.push(packet);
     }
 
-    // Calculate vertical speed (descent rate) if previous packet exists
-    if (this.previousPacket && this.previousPacket.sensors?.bmp280 && packet.sensors?.bmp280) {
-      const dt = (packet.timestamp - this.previousPacket.timestamp) || 0.5;
+    // Calculate vertical speed (descent rate)
+    // Priority 1: NASA 42 / cFS Kalman filter fused vertical velocity
+    if (packet.sensors?.kalman?.filteredVelocity_mps !== undefined) {
+      this.metrics.descentRate_mps = Number(packet.sensors.kalman.filteredVelocity_mps.toFixed(2));
+    } else if (this.previousPacket && this.previousPacket.sensors?.bmp280 && packet.sensors?.bmp280) {
+      // Priority 2: Precise barometric delta over elapsed time
+      const dt = (packet.timestamp - this.previousPacket.timestamp);
+      const effectiveDt = (dt && dt > 0.02 && dt < 10) ? dt : dtReal;
       const dAlt = packet.sensors.bmp280.altitude_m - this.previousPacket.sensors.bmp280.altitude_m;
-      this.metrics.descentRate_mps = Number((dAlt / dt).toFixed(2));
+      this.metrics.descentRate_mps = Number((dAlt / effectiveDt).toFixed(2));
     }
 
     // Track max altitude
     const alt = packet.sensors?.bmp280?.altitude_m || 0;
     if (alt > this.metrics.maxAltitude_m) {
       this.metrics.maxAltitude_m = alt;
+    }
+
+    // Comprehensive Flight Phase Detection State Machine
+    const vz = this.metrics.descentRate_mps;
+    const maxAlt = this.metrics.maxAltitude_m;
+    const status = packet.status || '';
+
+    if (maxAlt < 5 && alt <= 3 && Math.abs(vz) < 1.0) {
+      this.metrics.flightPhase = 'PRE-LANZAMIENTO';
+    } else if (vz > 2.0) {
+      this.metrics.flightPhase = 'ASCENSO / PROPULSIÓN';
+    } else if (maxAlt > 30 && alt >= (maxAlt - 25) && Math.abs(vz) <= 2.5) {
+      this.metrics.flightPhase = 'APOGEO';
+    } else if (status.includes('CHUTE_FAIL') || (maxAlt > 50 && vz < -18.0)) {
+      this.metrics.flightPhase = 'CAÍDA LIBRE (FALLO PARACAÍDAS)';
+    } else if (vz < -1.0) {
+      this.metrics.flightPhase = 'DESCENSO CONTROLADO';
+    } else if (maxAlt > 30 && alt <= 3 && Math.abs(vz) < 1.0) {
+      this.metrics.flightPhase = 'ATERRIZAJE / EN TIERRA';
+    } else {
+      this.metrics.flightPhase = 'TRANSMITIENDO';
     }
 
     // Check link quality based on RSSI
