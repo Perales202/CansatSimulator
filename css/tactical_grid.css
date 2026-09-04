@@ -1,121 +1,271 @@
 /* ==========================================================================
-   CAN-SAT TACTICAL GROUND STATION - RADAR & RAW TELEMETRY
-   Polar/Cartesian Tactical Display, Grid Calculator & Raw Stream Table
+   CAN-SAT TACTICAL GROUND STATION - 3D ATTITUDE VISUALIZER & TRACKING
+   6-DOF Spacecraft Viewport, Gimbal Telemetry & Compact Tactical Radar
    ========================================================================== */
 
-/* Tactical Radar Container */
-.radar-wrapper {
+/* Main 3D Container */
+.cansat-3d-wrapper {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.radar-canvas-container {
-  flex: 1;
-  min-height: 240px;
-  position: relative;
-  background: radial-gradient(circle at center, #0a1322 0%, #05080e 90%);
-  border: 1px solid var(--border-tactical);
-  border-radius: 4px;
+  gap: 6px;
   overflow: hidden;
 }
 
-.radar-canvas {
+/* 1. Floating Top Toolbar */
+.cansat-3d-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(10, 15, 24, 0.85);
+  border: 1px solid var(--border-tactical);
+  border-radius: 3px;
+  padding: 4px 8px;
+}
+
+.cansat-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--c-nominal);
+  text-transform: uppercase;
+}
+
+.cansat-status-badge .status-indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c-nominal);
+  box-shadow: 0 0 6px var(--c-nominal);
+}
+
+.cansat-status-badge.warning {
+  color: var(--c-warning);
+}
+.cansat-status-badge.warning .status-indicator-dot {
+  background: var(--c-warning);
+  box-shadow: 0 0 6px var(--c-warning);
+}
+
+.cansat-status-badge.critical {
+  color: var(--c-critical);
+}
+.cansat-status-badge.critical .status-indicator-dot {
+  background: var(--c-critical);
+  box-shadow: 0 0 8px var(--c-critical);
+  animation: pulse-critical 0.6s infinite alternate;
+}
+
+.cansat-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cansat-view-actions .btn-tactical {
+  padding: 2px 7px;
+  font-size: 8.5px;
+}
+
+.cansat-view-actions .btn-tactical.active {
+  background: rgba(0, 229, 255, 0.25);
+  border-color: var(--c-cyan);
+  color: #fff;
+  box-shadow: 0 0 8px var(--c-cyan-glow);
+}
+
+/* 2. Main 3D Spacecraft Viewport */
+.cansat-3d-viewport {
+  flex: 1;
+  min-height: 230px;
+  position: relative;
+  background: radial-gradient(circle at center, #0e172a 0%, #05080e 95%);
+  border: 1px solid var(--border-bright);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 229, 255, 0.05);
+  cursor: grab;
+}
+
+.cansat-3d-viewport:active {
+  cursor: grabbing;
+}
+
+.cansat-3d-canvas {
   width: 100%;
   height: 100%;
   display: block;
 }
 
-/* Radar Sweep Line Animation */
-.radar-sweep-overlay {
+.cansat-drag-hint {
   position: absolute;
-  top: 50%;
+  bottom: 6px;
   left: 50%;
-  width: 100%;
-  height: 100%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.08em;
   pointer-events: none;
-  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 1px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Radar Information Readout Strip */
-.radar-telemetry-strip {
+/* 3. Spacecraft Attitude Euler Strip */
+.attitude-euler-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-tactical);
-  border-radius: 3px;
-  padding: 6px;
 }
 
-.radar-stat-box {
+.euler-card {
+  background: rgba(10, 15, 24, 0.9);
+  border: 1px solid var(--border-tactical);
+  border-radius: 3px;
+  padding: 5px 8px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  gap: 3px;
 }
 
-.radar-stat-label {
-  font-family: var(--font-display);
-  font-size: 8.5px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.radar-stat-val {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--c-cyan);
-}
-
-/* Grid Reference Calculator Box */
-.grid-calc-card {
-  background: rgba(10, 14, 22, 0.9);
-  border: 1px solid var(--border-tactical);
-  border-radius: 3px;
-  padding: 6px 10px;
+.euler-card-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-}
-
-.grid-ref-display {
-  display: flex;
   align-items: center;
-  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-secondary);
 }
 
-.grid-ref-pill {
+.euler-axis-tag {
+  font-size: 7.5px;
   font-family: var(--font-mono);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.euler-axis-tag.roll {
+  background: rgba(255, 23, 68, 0.2);
+  color: #ff1744;
+  border: 1px solid rgba(255, 23, 68, 0.4);
+}
+
+.euler-axis-tag.pitch {
+  background: rgba(0, 230, 118, 0.2);
+  color: #00e676;
+  border: 1px solid rgba(0, 230, 118, 0.4);
+}
+
+.euler-axis-tag.yaw {
+  background: rgba(0, 229, 255, 0.2);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+}
+
+.euler-card-val {
   font-size: 13px;
   font-weight: 800;
   color: #fff;
-  background: rgba(0, 229, 255, 0.15);
-  border: 1px solid var(--c-cyan);
-  padding: 2px 8px;
-  border-radius: 3px;
-  box-shadow: 0 0 10px var(--c-cyan-glow);
+  line-height: 1.1;
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.4);
 }
 
-/* Artificial Horizon / Mini Attitude HUD */
-.attitude-hud-mini {
-  height: 105px;
-  background: #090e18;
-  border: 1px solid var(--border-tactical);
-  border-radius: 3px;
+.euler-bar-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
   position: relative;
   overflow: hidden;
 }
 
-.attitude-canvas {
-  width: 100%;
-  height: 100%;
+.euler-bar-thumb {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  margin-left: -4px;
+  background: var(--c-cyan);
+  box-shadow: 0 0 4px var(--c-cyan);
+  border-radius: 2px;
+  transition: left 0.1s ease;
+}
+
+/* 4. Gyroscope Rates Bar */
+.gyro-rates-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(8, 12, 18, 0.7);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+}
+
+/* 5. Compact Tactical Navigation Card */
+.tactical-nav-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(10, 14, 22, 0.95);
+  border: 1px solid var(--border-tactical);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.mini-radar-container {
+  width: 70px;
+  height: 70px;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-radar-canvas {
+  width: 70px;
+  height: 70px;
   display: block;
+}
+
+.nav-metrics-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 8px;
+}
+
+.nav-metric-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-metric-col.span-full {
+  grid-column: 1 / 4;
+}
+
+.nav-metric-label {
+  font-family: var(--font-display);
+  font-size: 7.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.nav-metric-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-cyan);
 }
 
 /* ==========================================================================
