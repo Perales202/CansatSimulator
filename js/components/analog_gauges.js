@@ -19,18 +19,38 @@ class AnalogGaugesComponent {
   }
 
   renderSkeleton() {
-    // 1. Generate aviation circular altimeter tick marks & dial numbers (0 through 9)
-    const dialTicks = Array.from({ length: 50 }).map((_, i) => {
-      const angle = i * 7.2;
-      const isMajor = i % 5 === 0;
-      const r1 = isMajor ? 46 : 50;
+    // 1. Generate aviation circular altimeter tick marks (200 graduations = 0.5m resolution per full 100m turn)
+    const dialTicks = Array.from({ length: 200 }).map((_, i) => {
+      const angle = i * 1.8;
+      const isTenMeter = i % 20 === 0;
+      const isFiveMeter = i % 10 === 0;
+      const isOneMeter = i % 2 === 0;
+
+      let r1 = 51.8;
+      let strokeWidth = 0.5;
+      let strokeColor = 'rgba(255,255,255,0.18)';
+
+      if (isTenMeter) {
+        r1 = 45;
+        strokeWidth = 1.5;
+        strokeColor = 'rgba(255,255,255,0.85)';
+      } else if (isFiveMeter) {
+        r1 = 47.5;
+        strokeWidth = 1.2;
+        strokeColor = 'rgba(255,255,255,0.65)';
+      } else if (isOneMeter) {
+        r1 = 49.5;
+        strokeWidth = 0.8;
+        strokeColor = 'rgba(255,255,255,0.38)';
+      }
+
       const r2 = 54;
       const rad = (angle - 90) * Math.PI / 180;
       const x1 = 60 + r1 * Math.cos(rad);
       const y1 = 60 + r1 * Math.sin(rad);
       const x2 = 60 + r2 * Math.cos(rad);
       const y2 = 60 + r2 * Math.sin(rad);
-      return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${isMajor ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)'}" stroke-width="${isMajor ? 1.5 : 0.8}" />`;
+      return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${strokeColor}" stroke-width="${strokeWidth}" />`;
     }).join('');
 
     const dialNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => {
@@ -112,7 +132,7 @@ class AnalogGaugesComponent {
           </div>
           <div class="flight-state-telemetry">
             <div class="flight-telemetry-cell">
-              <span class="flight-sub-label">CARGA G:</span>
+              <span class="flight-sub-label">CARGA G (±16g):</span>
               <span id="gforce-val" class="flight-stat-value font-mono" style="color:var(--c-nominal);">1.00 G</span>
             </div>
             <div class="flight-telemetry-separator"></div>
@@ -127,7 +147,7 @@ class AnalogGaugesComponent {
         <div class="gauge-container">
           <div class="gauge-title-badge">
             <span>ALTÍMETRO BAROMÉTRICO</span>
-            <span class="gauge-unit">0-10.000m</span>
+            <span class="gauge-unit">RES: 0.5m</span>
           </div>
           <div class="analog-dial" id="altimeter-dial">
             <!-- Background Dial Face Ring -->
@@ -145,6 +165,7 @@ class AnalogGaugesComponent {
             <svg class="dial-face-svg dial-overlay-svg" viewBox="0 0 120 120" style="position:absolute; width:100%; height:100%; pointer-events:none;">
               ${dialTicks}
               ${dialNumbers}
+              <text x="60" y="86" font-family="var(--font-mono)" font-size="4.6" font-weight="700" fill="rgba(0,229,255,0.7)" text-anchor="middle" letter-spacing="0.4">RES: 0.5m</text>
             </svg>
 
             <!-- Center pin -->

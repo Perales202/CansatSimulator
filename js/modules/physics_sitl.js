@@ -12,7 +12,9 @@ class PhysicsSITL {
     this.onPacket = onPacketCallback || (() => {});
     this.intervalId = null;
     this.running = false;
-    this.frequencyHz = 2; // Default: 2 updates per second
+    this.frequencyHz = 1; // Default: 1 Hz (1 update per second minimum transmission rate)
+    this.teamId = 1024;   // Default 4-digit Team ID
+    this.packetCount = 0; // Cumulative packet counter
 
     // Physical Constants
     this.GRAVITY = 9.80665;       // m/s^2
@@ -24,7 +26,7 @@ class PhysicsSITL {
     this.UNIVERSAL_GAS = 8.3144598; // J/(mol*K)
 
     // CanSat Physical Specs
-    this.CANSAT_MASS = 0.350;     // 350 grams standard CanSat
+    this.CANSAT_MASS = 0.500;     // 500 grams default CanSat mass limit
     this.CHUTE_DRAG_COEFF = 1.35; // Standard hemispherical chute Cd
     this.CHUTE_AREA = 0.125;      // m^2
     this.BODY_DRAG_COEFF = 0.45;  // Body alone without chute
@@ -39,13 +41,13 @@ class PhysicsSITL {
       posY_m: 0,
       windSpeed_mps: 3.2,
       windDirection_deg: 45,     // Blowing towards North-East
-      phase: 'PAD',               // PAD -> ASCENT/DRONE_ASCENT -> APOGEE/HOVER -> FREEFALL -> PARACHUTE -> LANDED
+      phase: 'PAD',               // PAD -> DRONE_ASCENT -> DRONE_HOVER -> FREEFALL -> PARACHUTE -> LANDED
       elapsedTime_s: 0,
-      apogeeTarget_m: 850,        // Simulated apogee / release target
-      chuteDeployAlt_m: 500,      // Parachute deployment altitude
+      apogeeTarget_m: 50,         // Default: 50m drone drop target
+      chuteDeployAlt_m: 35,       // Parachute deployment altitude for 50m drop
       parachuteDeployed: false,
       anomaly: null,              // null, 'PARACHUTE_FAILURE', 'BARO_SPIKE', 'SIGNAL_DROP'
-      launchMethod: 'ROCKET',     // 'ROCKET' | 'DRONE'
+      launchMethod: 'DRONE',      // Default: Drone Multirotor elevation
       droneClimbRate_mps: 5.0,    // Steady climb speed with drone
       droneHoverTime_s: 2.0,      // Hover time before release (seconds)
       hoverElapsed_s: 0
@@ -115,6 +117,7 @@ class PhysicsSITL {
   }
 
   reset() {
+    this.packetCount = 0;
     this.state.altitude_m = 0;
     this.state.velocity_mps = 0;
     this.state.acceleration_mps2 = 0;
@@ -371,17 +374,57 @@ class PhysicsSITL {
       kalmanData = this.kalman.update(measuredAlt);
     }
 
-    // Return exact PRD JSON format + extended attitude/inertial sensors
-    return {
+    // Format MET (Mission Elapsed Time) as HH:MM:SS
+    const totalSec = Math.max(0, Math.floor(s.elapsedTime_s));
+    const metHrs = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+    const metMins = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+    const metSecs = String(totalSec % 60).padStart(2, '0');
+    const missionTimeStr = `${metHrs}:${metMins}:${metSecs}`;
+
+    // Battery voltage model: 1S LiPo ~4.15V slowly discharging, with minor variance
+    const baseVoltage = Math.max(3.30, 4.15 - (s.elapsedTime_s * 0.0003));
+    const measuredVoltage = Number((baseVoltage + this.gaussianNoise(0, 0.008)).toFixed(2));
+
+    // Map flight phase to 4-character State string
+    const stateMap = {
+      'PAD': 'IDLE',
+      'DRONE_ASCENT': 'ASC_',
+      'ASCENT': 'ASC_',
+      'DRONE_HOVER': 'HOVR',
+      'HOVER': 'HOVR',
+      'DRONE_RELEASE': 'APOG',
+      'APOGEE': 'APOG',
+      'FREEFALL': 'DESC',
+      'PARACHUTE': 'CHUT',
+      'LANDED': 'LAND'
+    };
+    const state4Char = stateMap[s.phase] || s.phase.padEnd(4, '_').slice(0, 4);
+
+    this.packetCount = (this.packetCount || 0) + 1;
+
+    // Return exact PRD JSON format + extended attitude/inertial sensors & official 10-field CSV
+    const packetObj = {
       timestamp: Number((Date.now() / 1000).toFixed(2)),
       status: packetStatus,
+      teamId: this.teamId,
+      missionTime: missionTimeStr,
+      packetCount: this.packetCount,
+      voltage: measuredVoltage,
+      flightState: state4Char,
       sensors: {
         bmp280: {
           temp_c: Number(measuredTemp.toFixed(1)),
           pressure_hpa: Number(measuredPress.toFixed(1)),
           altitude_m: Number(Math.max(0, measuredAlt).toFixed(1))
         },
+        battery: {
+          voltage_v: measuredVoltage
+        },
         telemetry: {
+          team_id: this.teamId,
+          mission_time: missionTimeStr,
+          packet_count: this.packetCount,
+          state: state4Char,
           rssi_lora: Math.round(baseRssi),
           snr: Number(baseSnr.toFixed(1)),
           grid_ref: gridRefStr,
@@ -392,6 +435,12 @@ class PhysicsSITL {
         kalman: kalmanData
       }
     };
+
+    if (window.TelemetryParser && window.TelemetryParser.formatCSV) {
+      packetObj.rawCSV = window.TelemetryParser.formatCSV(packetObj);
+    }
+
+    return packetObj;
   }
 }
 

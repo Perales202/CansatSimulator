@@ -27,6 +27,7 @@
   <!-- Dependencies -->
   <script src="js/modules/attitude_math.js"></script>
   <script src="js/modules/telemetry_parser.js"></script>
+  <script src="js/modules/physics_sitl.js"></script>
   <script src="js/components/charts_engine.js"></script>
   <script src="js/components/raw_table.js"></script>
   <script src="js/components/analog_gauges.js"></script>
@@ -301,6 +302,67 @@
       assert('Variometer Rapid Descent Class Critical', gauges.elements.vspeedArc.getAttribute('class').includes('critical'));
       assert('Sub-Zero Temperature Arc Class Warning', gauges.elements.tempArc.getAttribute('class').includes('warning'));
       assert('RF Link Quality Badge Degraded', gauges.elements.rfStatus.textContent === 'DEGRADADO');
+
+      // -------------------------------------------------------------
+      // TEST 12: CanSat Telemetry Protocol (ASCII CSV & Formato 10 Campos)
+      // -------------------------------------------------------------
+      const parser = new window.TelemetryParser();
+      const validCsv = '1024,00:00:15,15,48.5,22.4,3.95,0.02,-0.05,1.00,ASC_\n';
+      const parsedCsv = parser.parse(validCsv);
+      assert('CSV Ingest Success', parsedCsv.success === true, parsedCsv.error);
+      assert('CSV TeamID 4 Digits Parsed', parsedCsv.packet.teamId === 1024, `teamId = ${parsedCsv.packet.teamId}`);
+      assert('CSV Mission Time Parsed', parsedCsv.packet.missionTime === '00:00:15', `missionTime = ${parsedCsv.packet.missionTime}`);
+      assert('CSV Packet Count Parsed', parsedCsv.packet.packetCount === 15, `packetCount = ${parsedCsv.packet.packetCount}`);
+      assert('CSV Altitude Float 1 Dec', parsedCsv.packet.sensors.bmp280.altitude_m === 48.5, `alt = ${parsedCsv.packet.sensors.bmp280.altitude_m}`);
+      assert('CSV Temperature Float 1 Dec', parsedCsv.packet.sensors.bmp280.temp_c === 22.4, `temp = ${parsedCsv.packet.sensors.bmp280.temp_c}`);
+      assert('CSV Voltage Float 2 Dec', parsedCsv.packet.voltage === 3.95, `voltage = ${parsedCsv.packet.voltage}`);
+      assert('CSV Accel_X Float 2 Dec', parsedCsv.packet.sensors.imu.accel_g.x === 0.02, `ax = ${parsedCsv.packet.sensors.imu.accel_g.x}`);
+      assert('CSV Accel_Y Float 2 Dec', parsedCsv.packet.sensors.imu.accel_g.y === -0.05, `ay = ${parsedCsv.packet.sensors.imu.accel_g.y}`);
+      assert('CSV Accel_Z Float 2 Dec', parsedCsv.packet.sensors.imu.accel_g.z === 1.00, `az = ${parsedCsv.packet.sensors.imu.accel_g.z}`);
+      assert('CSV State 4 Characters', parsedCsv.packet.flightState === 'ASC_', `state = ${parsedCsv.packet.flightState}`);
+
+      // Test formatCSV round-trip
+      const formattedCsv = window.TelemetryParser.formatCSV(parsedCsv.packet);
+      assert('formatCSV Output Matches CSV Pattern', formattedCsv.trim() === '1024,00:00:15,15,48.5,22.4,3.95,0.02,-0.05,1.00,ASC_', formattedCsv.trim());
+      assert('formatCSV Terminates With Newline', formattedCsv.endsWith('\n'), 'Ends with \\n');
+
+      // Test CSV Anomaly detection (bad fields)
+      const badCsv = '1024,00:00:15,15,48.5,22.4\n'; // Only 5 fields
+      const badResult = parser.parse(badCsv);
+      assert('CSV Format Rejection on Field Count Mismatch', badResult.success === false, badResult.error);
+
+      // -------------------------------------------------------------
+      // TEST 13: Interfaz: Resolución Altímetro 0.5m & Rango Acelerómetro ±16g
+      // -------------------------------------------------------------
+      const altDial = gaugesContainer.querySelector('#altimeter-dial');
+      assert('Altimeter Dial Face Exists', altDial !== null);
+      const altTicks = altDial.querySelectorAll('line');
+      assert('Altimeter Dial Features 200 Graduations (0.5m step over 100m)', altTicks.length === 200, `ticks count = ${altTicks.length}`);
+      assert('Altimeter Face Displays RES: 0.5m Indicator', altDial.innerHTML.includes('RES: 0.5m'));
+      assert('Altimeter Title Badge Specifies RES: 0.5m', gaugesContainer.querySelector('.gauge-title-badge').textContent.includes('RES: 0.5m'));
+
+      engine.activeChannel = 'KINEMATICS';
+      engine.updateTitles();
+      assert('Kinematics Title Highlights +-16g Accelerometer Range', engine.elements.titlePrimary.textContent.includes('±16g'), engine.elements.titlePrimary.textContent);
+      assert('Banner G-Force Cell Displays +-16g Label', gaugesContainer.querySelector('.flight-sub-label').textContent.includes('±16g'));
+
+      // -------------------------------------------------------------
+      // TEST 14: Valores Predeterminados CanSat (50m Dron, 500g Masa, 1Hz Telemetría)
+      // -------------------------------------------------------------
+      const testSitl = new window.PhysicsSITL();
+      assert('SITL Launch Method Default is DRONE', testSitl.state.launchMethod === 'DRONE', testSitl.state.launchMethod);
+      assert('SITL Target Apogee Default is 50m', testSitl.state.apogeeTarget_m === 50, `${testSitl.state.apogeeTarget_m}m`);
+      assert('SITL Chute Deploy Alt Default is 35m', testSitl.state.chuteDeployAlt_m === 35, `${testSitl.state.chuteDeployAlt_m}m`);
+      assert('SITL CanSat Mass Limit Default is 500g (0.500kg)', testSitl.CANSAT_MASS === 0.500, `${testSitl.CANSAT_MASS * 1000}g`);
+      assert('SITL Telemetry Rate Default is 1Hz', testSitl.frequencyHz === 1, `${testSitl.frequencyHz} Hz`);
+
+      const syntheticPkt = testSitl.generateSyntheticTelemetry();
+      assert('Synthetic Packet Has TeamID 4 Digits', String(syntheticPkt.teamId).length === 4, `teamId = ${syntheticPkt.teamId}`);
+      assert('Synthetic Packet Has Mission Time HH:MM:SS', /^\d{2}:\d{2}:\d{2}$/.test(syntheticPkt.missionTime), syntheticPkt.missionTime);
+      assert('Synthetic Packet Has Packet Count Integer', Number.isInteger(syntheticPkt.packetCount));
+      assert('Synthetic Packet Has Battery Voltage Float 2 Dec', typeof syntheticPkt.voltage === 'number' && syntheticPkt.voltage >= 3.3 && syntheticPkt.voltage <= 4.3, `${syntheticPkt.voltage}V`);
+      assert('Synthetic Packet Has State String 4 Chars', syntheticPkt.flightState.length === 4, syntheticPkt.flightState);
+      assert('Synthetic Packet Generates Valid ASCII CSV Line', syntheticPkt.rawCSV && syntheticPkt.rawCSV.endsWith('\n'), syntheticPkt.rawCSV);
 
     } catch (e) {
       assert('Test Execution Crash', false, e.message);

@@ -50,14 +50,16 @@ class RawTableComponent {
           <table class="raw-data-table">
             <thead>
               <tr>
-                <th>TIMESTAMP</th>
+                <th>MET (HH:MM:SS)</th>
+                <th>EQUIPO</th>
+                <th>PKT #</th>
                 <th>ESTADO</th>
                 <th>ALTITUD (m)</th>
-                <th>PRESIÓN (hPa)</th>
                 <th>TEMP (°C)</th>
-                <th>RSSI (dBm)</th>
-                <th>SNR (dB)</th>
-                <th>GRID REF</th>
+                <th>VOLT (V)</th>
+                <th>ACCEL X (g)</th>
+                <th>ACCEL Y (g)</th>
+                <th>ACCEL Z (g)</th>
               </tr>
             </thead>
             <tbody id="raw-table-tbody">
@@ -134,27 +136,49 @@ class RawTableComponent {
     }
     if (rowClass) tr.className = rowClass;
 
-    const bmp = packet.sensors.bmp280 || {};
-    const telem = packet.sensors.telemetry || {};
+    const bmp = packet.sensors?.bmp280 || {};
+    const telem = packet.sensors?.telemetry || {};
+    const imu = packet.sensors?.imu || {};
+    const batt = packet.sensors?.battery || {};
 
-    const dateStr = new Date(packet.timestamp * 1000).toISOString().substr(11, 8);
+    const metStr = packet.missionTime || telem.mission_time || (packet.timestamp ? new Date(packet.timestamp * 1000).toISOString().substr(11, 8) : '00:00:00');
+    const teamIdStr = String(packet.teamId ?? telem.team_id ?? 1024).padStart(4, '0');
+    const pktCountStr = packet.packetCount ?? telem.packet_count ?? 0;
+    const stateStr = packet.flightState || telem.state || packet.status || 'NOMN';
+    const altStr = (bmp.altitude_m ?? packet.altitude ?? 0).toFixed(1);
+    const tempStr = (bmp.temp_c ?? packet.temperature ?? 0).toFixed(1);
+    const voltStr = (batt.voltage_v ?? packet.voltage ?? 4.10).toFixed(2);
+
+    let ax = 0, ay = 0, az = 1.0;
+    if (imu.accel_g) {
+      ax = imu.accel_g.x ?? 0;
+      ay = imu.accel_g.y ?? 0;
+      az = imu.accel_g.z ?? 1.0;
+    } else if (imu.accel_mps2) {
+      ax = (imu.accel_mps2.x ?? 0) / 9.80665;
+      ay = (imu.accel_mps2.y ?? 0) / 9.80665;
+      az = (imu.accel_mps2.z ?? 9.80665) / 9.80665;
+    }
 
     tr.innerHTML = `
-      <td class="font-mono">${dateStr} (${packet.timestamp})</td>
-      <td><span class="badge ${statusClass}">${packet.status}</span></td>
-      <td class="font-mono" style="color:var(--c-cyan); font-weight:700;">${(bmp.altitude_m ?? 0).toFixed(1)}</td>
-      <td class="font-mono">${(bmp.pressure_hpa ?? 0).toFixed(1)}</td>
-      <td class="font-mono">${(bmp.temp_c ?? 0).toFixed(1)}</td>
-      <td class="font-mono" style="color:${(telem.rssi_lora ?? -100) < -100 ? 'var(--c-critical)' : 'inherit'}">${telem.rssi_lora ?? '--'}</td>
-      <td class="font-mono">${(telem.snr ?? 0).toFixed(1)}</td>
-      <td class="font-mono" style="color:var(--c-gold);">${telem.grid_ref ?? '--'}</td>
+      <td class="font-mono" style="color:var(--c-cyan);">${metStr}</td>
+      <td class="font-mono">${teamIdStr}</td>
+      <td class="font-mono">${pktCountStr}</td>
+      <td><span class="badge ${statusClass}">${stateStr}</span></td>
+      <td class="font-mono" style="color:var(--c-cyan); font-weight:700;">${altStr}</td>
+      <td class="font-mono">${tempStr}</td>
+      <td class="font-mono" style="color:var(--c-gold);">${voltStr}</td>
+      <td class="font-mono">${Number(ax).toFixed(2)}</td>
+      <td class="font-mono">${Number(ay).toFixed(2)}</td>
+      <td class="font-mono">${Number(az).toFixed(2)}</td>
     `;
 
     // Tooltip inspection on row click
     tr.style.cursor = 'pointer';
-    tr.title = 'Clic para ver JSON crudo';
+    tr.title = 'Clic para ver telemetría raw (CSV y JSON)';
     tr.addEventListener('click', () => {
-      alert(`PAQUETE TELEMETRÍA RAW (JSON):\n\n${JSON.stringify(packet, null, 2)}`);
+      const csv = window.TelemetryParser ? window.TelemetryParser.formatCSV(packet).trim() : '';
+      alert(`PAQUETE TELEMETRÍA (ASCII CSV):\n${csv}\n\nOBJETO JSON COMPLETO:\n${JSON.stringify(packet, null, 2)}`);
     });
 
     this.tbody.appendChild(tr);
@@ -171,7 +195,7 @@ class RawTableComponent {
 
   matchesFilter(p) {
     if (!this.filterText) return true;
-    const str = `${p.status} ${p.sensors?.telemetry?.grid_ref} ${p.timestamp}`.toLowerCase();
+    const str = `${p.status} ${p.flightState} ${p.teamId} ${p.missionTime} ${p.sensors?.telemetry?.grid_ref} ${p.timestamp}`.toLowerCase();
     return str.includes(this.filterText);
   }
 
@@ -189,28 +213,16 @@ class RawTableComponent {
       return;
     }
 
-    const headers = ['timestamp', 'iso_time', 'status', 'altitude_m', 'pressure_hpa', 'temp_c', 'rssi_lora', 'snr', 'grid_ref'];
-    const lines = [headers.join(',')];
+    const header = 'TeamID,Mission_time,Packet_count,Altitude,Temperature,Voltage,Accel_X,Accel_Y,Accel_Z,State';
+    const lines = [header];
 
     this.rows.forEach(p => {
-      const bmp = p.sensors?.bmp280 || {};
-      const telem = p.sensors?.telemetry || {};
-      const iso = new Date(p.timestamp * 1000).toISOString();
-      const row = [
-        p.timestamp,
-        `"${iso}"`,
-        `"${p.status}"`,
-        bmp.altitude_m ?? '',
-        bmp.pressure_hpa ?? '',
-        bmp.temp_c ?? '',
-        telem.rssi_lora ?? '',
-        telem.snr ?? '',
-        `"${telem.grid_ref ?? ''}"`
-      ];
-      lines.push(row.join(','));
+      if (window.TelemetryParser && window.TelemetryParser.formatCSV) {
+        lines.push(window.TelemetryParser.formatCSV(p).trim());
+      }
     });
 
-    this.downloadFile(lines.join('\n'), `telemetry_cansat_${Date.now()}.csv`, 'text/csv');
+    this.downloadFile(lines.join('\n') + '\n', `telemetry_cansat_${Date.now()}.csv`, 'text/csv');
   }
 
   exportJSON() {

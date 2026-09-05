@@ -30,10 +30,10 @@ class ChartsEngine {
     this.isPaused = false;
     this.inspectPoint = null;       // { index, pt, screenX }
 
-    // Mission reference lines
+    // Mission reference lines (Default 50m drone drop)
     this.missionLimits = {
-      apogeeTarget_m: 850,
-      chuteDeployAlt_m: 500
+      apogeeTarget_m: 50,
+      chuteDeployAlt_m: 35
     };
 
     this.renderSkeleton();
@@ -498,7 +498,7 @@ class ChartsEngine {
         sTitle: 'VARIÓMETRO / TASA DE ASCENSO Y DESCENSO (m/s)'
       },
       KINEMATICS: {
-        pTitle: 'CARGA G TOTAL / SOBRECARGA DINÁMICA (G)',
+        pTitle: 'ACELERÓMETRO Y CARGA G (RANGO MÍNIMO ±16g)',
         sTitle: 'VELOCIDADES ANGULARES GIROSCOPIO (°/s)'
       },
       ENVIRONMENT: {
@@ -736,13 +736,13 @@ class ChartsEngine {
       const plotArea = this.getPlotArea(w, h, dpr);
       const timeDomain = this.computeTimeDomain(pts);
 
-      let maxG = 3.0;
-      pts.forEach(p => { if (p.totalG > maxG) maxG = p.totalG * 1.2; });
+      let maxG = 16.0; // Rango mínimo acelerómetro ±16g
+      pts.forEach(p => { if (p.totalG > maxG) maxG = p.totalG * 1.1; });
       maxG = Math.ceil(maxG);
 
       this.drawTacticalGrid(ctxP, plotArea, 0, maxG, 'G', timeDomain, dpr);
       this.drawReferenceLine(ctxP, plotArea, 1.0, 0, maxG, '1.0G NOMINAL', '#00e676', dpr);
-      this.drawReferenceLine(ctxP, plotArea, 3.0, 0, maxG, '3.0G UMBRAL', '#ff1744', dpr);
+      this.drawReferenceLine(ctxP, plotArea, 16.0, 0, maxG, '±16.0G RANGO SENSOR', '#ff1744', dpr);
 
       if (pts.length > 0 && last) {
         this.drawDataCurve(ctxP, pts, p => p.totalG, 0, maxG, plotArea, timeDomain, {

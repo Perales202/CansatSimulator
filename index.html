@@ -258,8 +258,8 @@ Esperando flujo asíncrono desde ESP32...
         <!-- Quick Presets -->
         <div class="modal-presets-strip">
           <span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-family:var(--font-display);">PRESETS RÁPIDOS:</span>
-          <button class="btn-tactical" id="preset-btn-standard" style="font-size:10px; padding:3px 8px;">Estándar (850m)</button>
-          <button class="btn-tactical" id="preset-btn-drone" style="font-size:10px; padding:3px 8px; color:var(--c-cyan); border-color:var(--border-focus);">🛸 Dron (500m / 5m/s)</button>
+          <button class="btn-tactical" id="preset-btn-drone" style="font-size:10px; padding:3px 8px; color:var(--c-cyan); border-color:var(--border-focus);">🛸 Dron Oficial (50m / 500g)</button>
+          <button class="btn-tactical" id="preset-btn-standard" style="font-size:10px; padding:3px 8px;">🚀 Cohete (850m)</button>
           <button class="btn-tactical" id="preset-btn-low" style="font-size:10px; padding:3px 8px;">Baja Altura (400m)</button>
           <button class="btn-tactical" id="preset-btn-windy" style="font-size:10px; padding:3px 8px;">Viento Fuerte (7m/s)</button>
           <button class="btn-tactical" id="preset-btn-high" style="font-size:10px; padding:3px 8px;">Gran Altitud (1200m)</button>
@@ -274,8 +274,8 @@ Esperando flujo asíncrono desde ESP32...
               <span class="unit">PERFIL FÍSICO</span>
             </label>
             <select id="cfg-launch-method" class="table-input">
-              <option value="ROCKET" selected>🚀 Cohete Sonda (Propulsión Balística ~4.5G)</option>
-              <option value="DRONE">🛸 Dron Multirrotor (Ascenso Controlado y Suelta)</option>
+              <option value="DRONE" selected>🛸 Dron Multirrotor (Ascenso Controlado y Suelta a 50m)</option>
+              <option value="ROCKET">🚀 Cohete Sonda (Propulsión Balística ~4.5G)</option>
             </select>
           </div>
 
@@ -303,7 +303,7 @@ Esperando flujo asíncrono desde ESP32...
               <span>Altitud de Suelta / Apogeo</span>
               <span class="unit">METROS</span>
             </label>
-            <input type="number" id="cfg-apogee" class="table-input" value="850" min="100" max="5000" step="50">
+            <input type="number" id="cfg-apogee" class="table-input" value="50" min="10" max="5000" step="5">
           </div>
 
           <!-- 2. Parachute Deployment Alt -->
@@ -312,7 +312,7 @@ Esperando flujo asíncrono desde ESP32...
               <span>Despliegue de Paracaídas</span>
               <span class="unit">METROS</span>
             </label>
-            <input type="number" id="cfg-chute-alt" class="table-input" value="500" min="50" max="3000" step="25">
+            <input type="number" id="cfg-chute-alt" class="table-input" value="35" min="5" max="3000" step="5">
           </div>
 
           <!-- 3. CanSat Mass -->
@@ -321,7 +321,7 @@ Esperando flujo asíncrono desde ESP32...
               <span>Masa del CanSat</span>
               <span class="unit">GRAMOS</span>
             </label>
-            <input type="number" id="cfg-mass" class="table-input" value="350" min="100" max="2000" step="10">
+            <input type="number" id="cfg-mass" class="table-input" value="500" min="50" max="2000" step="10">
           </div>
 
           <!-- 4. Wind Speed & Direction Header with GPS Action -->
@@ -362,8 +362,8 @@ Esperando flujo asíncrono desde ESP32...
               <span class="unit">Hz (PAQUETES/SEG)</span>
             </label>
             <select id="cfg-freq" class="table-input">
-              <option value="1">1 Hz (1 paquete / seg)</option>
-              <option value="2" selected>2 Hz (Estándar CanSat)</option>
+              <option value="1" selected>1 Hz (Mínimo Reglamentario - 1 pkt/s)</option>
+              <option value="2">2 Hz (Estándar CanSat)</option>
               <option value="4">4 Hz (Alta Tasa)</option>
               <option value="5">5 Hz (Máxima Frecuencia)</option>
             </select>

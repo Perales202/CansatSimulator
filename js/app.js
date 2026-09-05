@@ -284,15 +284,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (inputDroneSpeed) inputDroneSpeed.value = 5.0;
       if (inputDroneHover) inputDroneHover.value = 2.0;
-      if (inputApogee) inputApogee.value = 500;
-      if (inputChute) inputChute.value = 350;
-      if (inputMass) inputMass.value = 350;
+      if (inputApogee) inputApogee.value = 50;
+      if (inputChute) inputChute.value = 35;
+      if (inputMass) inputMass.value = 500;
       if (inputWindSpeed) inputWindSpeed.value = 2.8;
       if (inputWindDir) {
         inputWindDir.value = 60;
         updateWindCardinalLabel(60);
       }
-      if (selectFreq) selectFreq.value = '2';
+      if (selectFreq) selectFreq.value = '1';
       if (selectModalAnomaly) selectModalAnomaly.value = 'NONE';
     });
   }
@@ -397,15 +397,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Apply Modal Parameters and Start Simulation
   if (btnApplyModal) {
     btnApplyModal.addEventListener('click', () => {
-      const launchMethod = selectLaunchMethod?.value || 'ROCKET';
+      const launchMethod = selectLaunchMethod?.value || 'DRONE';
       const droneSpeed = Number(inputDroneSpeed?.value || 5.0);
       const droneHover = Number(inputDroneHover?.value || 2.0);
-      const apogee = Number(inputApogee?.value || 850);
-      const chuteAlt = Number(inputChute?.value || 500);
-      const mass = Number(inputMass?.value || 350);
+      const apogee = Number(inputApogee?.value || 50);
+      const chuteAlt = Number(inputChute?.value || 35);
+      const mass = Number(inputMass?.value || 500);
       const windSpeed = Number(inputWindSpeed?.value || 3.2);
       const windDir = Number(inputWindDir?.value || 45);
-      const freq = Number(selectFreq?.value || 2);
+      const freq = Number(selectFreq?.value || 1);
       const anomaly = selectModalAnomaly?.value || 'NONE';
 
       sitl.configure({
