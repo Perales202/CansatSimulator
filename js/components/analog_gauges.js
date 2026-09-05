@@ -136,7 +136,7 @@ class AnalogGaugesComponent {
               <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.75" />
             </svg>
 
-            <!-- Needles Layer (Sweeps behind numbers and readouts) -->
+            <!-- Needles Layer (Sweeps freely across dial face) -->
             <div class="dial-needle tenk" id="altimeter-needle-tenk" title="Aguja de 10.000 metros"></div>
             <div class="dial-needle secondary" id="altimeter-needle-slow" title="Aguja de 1.000 metros"></div>
             <div class="dial-needle" id="altimeter-needle-fast" title="Aguja de 100 metros"></div>
@@ -150,21 +150,22 @@ class AnalogGaugesComponent {
             <!-- Center pin -->
             <div class="dial-center-pin"></div>
 
-            <!-- Thousands Odometer Counter Sub-Window (Kollsman Style: Above needles) -->
+            <!-- Thousands Odometer Counter Sub-Window (Kollsman Style) -->
             <div class="altimeter-k-window" id="altimeter-k-box">
               <span style="font-size:7px; opacity:0.7;">FL</span>
               <span id="alt-k-val" style="color:#ffd166; font-weight:800;">0</span>
               <span style="font-size:7px; opacity:0.7;">km</span>
             </div>
-
-            <!-- Numeric Readout Overlay (Above needles) -->
-            <div class="gauge-readout altimeter-readout">
-              <span class="readout-primary" id="alt-num-val">0.0</span>
-              <span class="readout-sub">M.S.N.M.</span>
-            </div>
           </div>
-          <div style="margin-top:4px; font-size:9.5px; color:var(--text-muted);">
-            APOGEO: <span id="alt-max-val" style="color:var(--c-gold); font-weight:700;">0.0 m</span>
+          <div class="gauge-footer-bar">
+            <div class="gauge-footer-val">
+              <span class="gauge-footer-label">ACTUAL:</span>
+              <span id="alt-num-val" class="font-mono" style="font-weight:700; color:var(--c-cyan);">0.0</span> <span style="font-size:8px; color:var(--text-muted);">m</span>
+            </div>
+            <div class="gauge-footer-val">
+              <span class="gauge-footer-label">APOGEO:</span>
+              <span id="alt-max-val" class="font-mono" style="font-weight:700; color:var(--c-gold);">0.0 m</span>
+            </div>
           </div>
         </div>
 
@@ -188,19 +189,21 @@ class AnalogGaugesComponent {
             </svg>
             <!-- Center Hub -->
             <div class="half-dial-hub"></div>
-            <!-- Numeric Readout Badge (Over Needle) -->
-            <div class="half-dial-readout">
-              <span class="readout-primary" id="vspeed-num-val">+0.0</span>
-              <span class="readout-sub">m/s</span>
-            </div>
           </div>
           <div class="half-dial-limits">
             <span>-20</span>
             <span style="color:var(--c-cyan);">0</span>
             <span>+20</span>
           </div>
-          <div style="font-size:9px; color:var(--text-muted); margin-top:2px;">
-            ESTADO: <span id="vspeed-sub-tag" style="color:var(--text-secondary);">ESTABLE</span>
+          <div class="gauge-footer-bar">
+            <div class="gauge-footer-val">
+              <span class="gauge-footer-label">TASA:</span>
+              <span id="vspeed-num-val" class="font-mono" style="font-weight:700; color:var(--c-cyan);">+0.0</span> <span style="font-size:8px; color:var(--text-muted);">m/s</span>
+            </div>
+            <div class="gauge-footer-val">
+              <span class="gauge-footer-label">EST:</span>
+              <span id="vspeed-sub-tag" class="font-mono" style="color:var(--text-secondary); font-weight:700;">ESTABLE</span>
+            </div>
           </div>
         </div>
 
@@ -224,19 +227,21 @@ class AnalogGaugesComponent {
             </svg>
             <!-- Center Hub -->
             <div class="half-dial-hub"></div>
-            <!-- Numeric Readout Badge (Over Needle) -->
-            <div class="half-dial-readout">
-              <span class="readout-primary" id="press-num-val">1013.2</span>
-              <span class="readout-sub">BMP280</span>
-            </div>
           </div>
           <div class="half-dial-limits">
             <span>700</span>
             <span style="color:var(--text-muted); font-size:7px;">MSL: 1013</span>
             <span>1050</span>
           </div>
-          <div style="font-size:9px; color:var(--text-muted); margin-top:2px;">
-            NIVEL DEL MAR: <span style="color:var(--text-secondary);">1013.2 hPa</span>
+          <div class="gauge-footer-bar">
+            <div class="gauge-footer-val">
+              <span class="gauge-footer-label">PRES:</span>
+              <span id="press-num-val" class="font-mono" style="font-weight:700; color:var(--c-cyan);">1013.2</span> <span style="font-size:8px; color:var(--text-muted);">hPa</span>
+            </div>
+            <div class="gauge-footer-val">
+              <span class="gauge-footer-label">MSL:</span>
+              <span style="color:var(--text-secondary); font-weight:700;">1013.2</span>
+            </div>
           </div>
         </div>
 
@@ -260,19 +265,21 @@ class AnalogGaugesComponent {
             </svg>
             <!-- Center Hub -->
             <div class="half-dial-hub"></div>
-            <!-- Numeric Readout Badge (Over Needle) -->
-            <div class="half-dial-readout">
-              <span class="readout-primary" id="temp-num-val">20.0</span>
-              <span class="readout-sub">CELSIUS</span>
-            </div>
           </div>
           <div class="half-dial-limits">
             <span>-20°</span>
             <span style="color:rgba(0,229,255,0.7); font-size:7px;">0° HIELO</span>
             <span>+50°</span>
           </div>
-          <div style="font-size:9px; color:var(--text-muted); margin-top:2px;">
-            GRADIENTE: <span style="color:var(--text-secondary);">-6.5°C/km</span>
+          <div class="gauge-footer-bar">
+            <div class="gauge-footer-val">
+              <span class="gauge-footer-label">TEMP:</span>
+              <span id="temp-num-val" class="font-mono" style="font-weight:700; color:var(--c-cyan);">20.0</span> <span style="font-size:8px; color:var(--text-muted);">°C</span>
+            </div>
+            <div class="gauge-footer-val">
+              <span class="gauge-footer-label">GRAD:</span>
+              <span style="color:var(--text-secondary); font-weight:700;">-6.5°</span>
+            </div>
           </div>
         </div>
 

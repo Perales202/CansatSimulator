@@ -312,36 +312,6 @@
   z-index: 9;
 }
 
-.half-dial-readout {
-  position: absolute;
-  bottom: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  pointer-events: none;
-  z-index: 10;
-  background: rgba(10, 15, 25, 0.92);
-  border: 1px solid rgba(0, 229, 255, 0.35);
-  border-radius: 3px;
-  padding: 1px 7px;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
-}
-
-.half-dial-readout .readout-primary {
-  font-size: 13.5px;
-  font-weight: 800;
-  letter-spacing: -0.2px;
-}
-
-.half-dial-readout .readout-sub {
-  font-size: 7.5px;
-  opacity: 0.85;
-  margin-top: 1px;
-}
-
 .half-dial-limits {
   display: flex;
   justify-content: space-between;
@@ -352,34 +322,34 @@
   color: var(--text-muted);
 }
 
-/* Central Numeric Readout */
-.gauge-readout {
-  position: absolute;
+/* Gauge Telemetry Footer Bar */
+.gauge-footer-bar {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  pointer-events: none;
-}
-
-/* Authentic Kollsman Sub-Window Style for Altimeter */
-.altimeter-readout {
-  bottom: 12px;
-  background: rgba(8, 12, 20, 0.94);
-  border: 1px solid rgba(0, 229, 255, 0.35);
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 4px;
+  padding: 3px 6px;
+  background: rgba(10, 14, 22, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 3px;
-  padding: 1px 6px;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
-  z-index: 10;
+  font-size: 9.5px;
+  box-sizing: border-box;
 }
 
-.altimeter-readout .readout-primary {
-  font-size: 13px;
+.gauge-footer-val {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
-.altimeter-readout .readout-sub {
+.gauge-footer-label {
+  color: var(--text-muted);
+  font-family: var(--font-display);
   font-size: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 /* Range limits indicators at gauge arc bases */
