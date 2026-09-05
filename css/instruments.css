@@ -109,13 +109,28 @@
   overflow: hidden;
 }
 
+.dial-face-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dial-overlay-svg {
+  z-index: 8;
+}
+
 .dial-center-pin {
+  position: absolute;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: var(--c-cyan);
   box-shadow: 0 0 6px var(--c-cyan);
-  z-index: 7;
+  z-index: 9;
 }
 
 .dial-needle {
@@ -125,11 +140,11 @@
   width: 3px;
   height: 48px;
   background: linear-gradient(to top, var(--c-cyan), #ffffff);
-  border-radius: 2px 2px 0 0;
+  clip-path: polygon(50% 0%, 100% 18%, 75% 100%, 25% 100%, 0% 18%);
   transform-origin: 50% 100%;
   transform: rotate(0deg);
   transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 0 8px var(--c-cyan);
+  box-shadow: 0 0 6px var(--c-cyan);
   z-index: 6;
 }
 
@@ -138,7 +153,8 @@
   width: 4px;
   left: calc(50% - 2px);
   background: linear-gradient(to top, var(--c-warning), #fff);
-  box-shadow: 0 0 6px var(--c-warning);
+  clip-path: polygon(50% 0%, 100% 18%, 75% 100%, 25% 100%, 0% 18%);
+  box-shadow: 0 0 5px var(--c-warning);
   z-index: 5;
 }
 
@@ -148,7 +164,7 @@
   width: 2px;
   left: calc(50% - 1px);
   background: #ffd166;
-  box-shadow: 0 0 8px rgba(255, 209, 102, 0.7);
+  box-shadow: 0 0 6px rgba(255, 209, 102, 0.7);
   z-index: 4;
 }
 
@@ -171,7 +187,7 @@
   left: 50%;
   transform: translateX(-50%);
   background: rgba(4, 7, 12, 0.94);
-  border: 1px solid rgba(255, 209, 102, 0.4);
+  border: 1px solid rgba(255, 209, 102, 0.5);
   border-radius: 2px;
   padding: 1px 5px;
   display: flex;
@@ -181,8 +197,8 @@
   font-size: 8.5px;
   font-weight: 700;
   color: #ffd166;
-  z-index: 8;
-  box-shadow: inset 0 0 5px rgba(0,0,0,0.9), 0 0 4px rgba(255, 209, 102, 0.2);
+  z-index: 10;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.9), 0 0 8px rgba(0, 0, 0, 0.85);
   pointer-events: none;
   white-space: nowrap;
 }
@@ -209,9 +225,25 @@
 }
 
 .half-dial-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.half-dial-overlay-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 8;
 }
 
 .half-dial-track {
@@ -254,17 +286,17 @@
   width: 3px;
   height: 44px;
   background: linear-gradient(to top, var(--c-cyan), #ffffff);
-  border-radius: 2px 2px 0 0;
+  clip-path: polygon(50% 0%, 100% 18%, 75% 100%, 25% 100%, 0% 18%);
   transform-origin: 50% 100%;
   transform: rotate(0deg);
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 0 6px var(--c-cyan);
+  box-shadow: 0 0 5px var(--c-cyan);
   z-index: 4;
 }
 
 .half-dial-needle.amber {
   background: linear-gradient(to top, var(--c-warning), #ffffff);
-  box-shadow: 0 0 6px var(--c-warning);
+  box-shadow: 0 0 5px var(--c-warning);
 }
 
 .half-dial-hub {
@@ -277,30 +309,36 @@
   background: #0d1522;
   border: 2px solid var(--c-cyan);
   box-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
-  z-index: 5;
+  z-index: 9;
 }
 
 .half-dial-readout {
   position: absolute;
-  bottom: 11px;
+  bottom: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   pointer-events: none;
-  z-index: 3;
+  z-index: 10;
+  background: rgba(10, 15, 25, 0.92);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 3px;
+  padding: 1px 7px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
 }
 
 .half-dial-readout .readout-primary {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 800;
   letter-spacing: -0.2px;
 }
 
 .half-dial-readout .readout-sub {
-  font-size: 8px;
-  opacity: 0.8;
+  font-size: 7.5px;
+  opacity: 0.85;
   margin-top: 1px;
 }
 
@@ -328,12 +366,12 @@
 /* Authentic Kollsman Sub-Window Style for Altimeter */
 .altimeter-readout {
   bottom: 12px;
-  background: rgba(8, 12, 20, 0.88);
-  border: 1px solid rgba(0, 229, 255, 0.25);
+  background: rgba(8, 12, 20, 0.94);
+  border: 1px solid rgba(0, 229, 255, 0.35);
   border-radius: 3px;
   padding: 1px 6px;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
-  z-index: 6;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+  z-index: 10;
 }
 
 .altimeter-readout .readout-primary {

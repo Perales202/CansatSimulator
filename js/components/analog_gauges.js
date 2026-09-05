@@ -130,31 +130,34 @@ class AnalogGaugesComponent {
             <span class="gauge-unit">0-10.000m</span>
           </div>
           <div class="analog-dial" id="altimeter-dial">
-            <!-- Authentic Aviation Dial Face with Graduation Ring -->
+            <!-- Background Dial Face Ring -->
             <svg class="dial-face-svg" viewBox="0 0 120 120" style="position:absolute; width:100%; height:100%; pointer-events:none;">
               <circle cx="60" cy="60" r="56" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1.5" />
               <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.75" />
+            </svg>
+
+            <!-- Needles Layer (Sweeps behind numbers and readouts) -->
+            <div class="dial-needle tenk" id="altimeter-needle-tenk" title="Aguja de 10.000 metros"></div>
+            <div class="dial-needle secondary" id="altimeter-needle-slow" title="Aguja de 1.000 metros"></div>
+            <div class="dial-needle" id="altimeter-needle-fast" title="Aguja de 100 metros"></div>
+
+            <!-- Foreground Dial Face Ticks & Numbers (Over Needles, pointer-events: none) -->
+            <svg class="dial-face-svg dial-overlay-svg" viewBox="0 0 120 120" style="position:absolute; width:100%; height:100%; pointer-events:none;">
               ${dialTicks}
               ${dialNumbers}
             </svg>
 
-            <!-- Thousands Odometer Counter Sub-Window (Kollsman Style) -->
+            <!-- Center pin -->
+            <div class="dial-center-pin"></div>
+
+            <!-- Thousands Odometer Counter Sub-Window (Kollsman Style: Above needles) -->
             <div class="altimeter-k-window" id="altimeter-k-box">
               <span style="font-size:7px; opacity:0.7;">FL</span>
               <span id="alt-k-val" style="color:#ffd166; font-weight:800;">0</span>
               <span style="font-size:7px; opacity:0.7;">km</span>
             </div>
 
-            <!-- Center pin -->
-            <div class="dial-center-pin"></div>
-            <!-- Tertiary needle (10,000s meters - Gold pointer with arrow tip) -->
-            <div class="dial-needle tenk" id="altimeter-needle-tenk" title="Aguja de 10.000 metros"></div>
-            <!-- Secondary needle (1000s meters - Medium/Amber) -->
-            <div class="dial-needle secondary" id="altimeter-needle-slow" title="Aguja de 1.000 metros"></div>
-            <!-- Primary needle (100s meters - Long/Cyan) -->
-            <div class="dial-needle" id="altimeter-needle-fast" title="Aguja de 100 metros"></div>
-
-            <!-- Numeric Readout Overlay -->
+            <!-- Numeric Readout Overlay (Above needles) -->
             <div class="gauge-readout altimeter-readout">
               <span class="readout-primary" id="alt-num-val">0.0</span>
               <span class="readout-sub">M.S.N.M.</span>
@@ -172,13 +175,20 @@ class AnalogGaugesComponent {
             <span class="gauge-unit">m/s</span>
           </div>
           <div class="half-dial-wrap">
-            <svg class="half-dial-svg" viewBox="0 0 120 72">
+            <!-- Background Track & Value Arc (Under Needle) -->
+            <svg class="half-dial-svg half-dial-bg" viewBox="0 0 120 72">
               <path class="half-dial-track" d="M 14,60 A 46,46 0 0,1 106,60" />
               <path class="half-dial-val" id="vspeed-arc" d="M 14,60 A 46,46 0 0,1 106,60" stroke-dasharray="144.5" stroke-dashoffset="72.2" />
+            </svg>
+            <!-- Rotating Needle -->
+            <div class="half-dial-needle" id="vspeed-needle" style="transform: rotate(0deg);"></div>
+            <!-- Foreground Ticks & Scale Numbers (Over Needle) -->
+            <svg class="half-dial-overlay-svg" viewBox="0 0 120 72">
               ${vspeedTicks}
             </svg>
-            <div class="half-dial-needle" id="vspeed-needle" style="transform: rotate(0deg);"></div>
+            <!-- Center Hub -->
             <div class="half-dial-hub"></div>
+            <!-- Numeric Readout Badge (Over Needle) -->
             <div class="half-dial-readout">
               <span class="readout-primary" id="vspeed-num-val">+0.0</span>
               <span class="readout-sub">m/s</span>
@@ -201,13 +211,20 @@ class AnalogGaugesComponent {
             <span class="gauge-unit">hPa</span>
           </div>
           <div class="half-dial-wrap">
-            <svg class="half-dial-svg" viewBox="0 0 120 72">
+            <!-- Background Track & Value Arc (Under Needle) -->
+            <svg class="half-dial-svg half-dial-bg" viewBox="0 0 120 72">
               <path class="half-dial-track" d="M 14,60 A 46,46 0 0,1 106,60" />
               <path class="half-dial-val" id="pressure-arc" d="M 14,60 A 46,46 0 0,1 106,60" stroke-dasharray="144.5" stroke-dashoffset="15" />
+            </svg>
+            <!-- Rotating Needle -->
+            <div class="half-dial-needle" id="pressure-needle" style="transform: rotate(71deg);"></div>
+            <!-- Foreground Ticks & Scale Numbers (Over Needle) -->
+            <svg class="half-dial-overlay-svg" viewBox="0 0 120 72">
               ${baroTicks}
             </svg>
-            <div class="half-dial-needle" id="pressure-needle" style="transform: rotate(71deg);"></div>
+            <!-- Center Hub -->
             <div class="half-dial-hub"></div>
+            <!-- Numeric Readout Badge (Over Needle) -->
             <div class="half-dial-readout">
               <span class="readout-primary" id="press-num-val">1013.2</span>
               <span class="readout-sub">BMP280</span>
@@ -230,13 +247,20 @@ class AnalogGaugesComponent {
             <span class="gauge-unit">°C</span>
           </div>
           <div class="half-dial-wrap">
-            <svg class="half-dial-svg" viewBox="0 0 120 72">
+            <!-- Background Track & Value Arc (Under Needle) -->
+            <svg class="half-dial-svg half-dial-bg" viewBox="0 0 120 72">
               <path class="half-dial-track" d="M 14,60 A 46,46 0 0,1 106,60" />
               <path class="half-dial-val" id="temp-arc" d="M 14,60 A 46,46 0 0,1 106,60" stroke-dasharray="144.5" stroke-dashoffset="62" />
+            </svg>
+            <!-- Rotating Needle -->
+            <div class="half-dial-needle" id="temp-needle" style="transform: rotate(13deg);"></div>
+            <!-- Foreground Ticks & Scale Numbers (Over Needle) -->
+            <svg class="half-dial-overlay-svg" viewBox="0 0 120 72">
               ${tempTicks}
             </svg>
-            <div class="half-dial-needle" id="temp-needle" style="transform: rotate(13deg);"></div>
+            <!-- Center Hub -->
             <div class="half-dial-hub"></div>
+            <!-- Numeric Readout Badge (Over Needle) -->
             <div class="half-dial-readout">
               <span class="readout-primary" id="temp-num-val">20.0</span>
               <span class="readout-sub">CELSIUS</span>
