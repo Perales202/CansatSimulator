@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>CanSat Tactical Suite - Automated Test Harness</title>
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/tactical_grid.css">
+  <style>
+    body { background: #05080e; color: #fff; font-family: monospace; padding: 20px; }
+    .test-pass { color: #00e676; font-weight: bold; }
+    .test-fail { color: #ff1744; font-weight: bold; }
+    .test-summary { font-size: 16px; margin-top: 20px; padding: 10px; border: 1px solid #00e5ff; }
+  </style>
+</head>
+<body>
+  <h2>=== CANSAT AUTOMATED TEST HARNESS ===</h2>
+  <div id="test-results"></div>
+
+  <!-- Hidden Mount Point for Components -->
+  <div id="test-mount" style="position: absolute; left: -9999px; width: 1200px; height: 800px;">
+    <div id="test-charts-container"></div>
+    <div id="test-raw-container"></div>
+  </div>
+
+  <!-- Dependencies -->
+  <script src="js/modules/attitude_math.js"></script>
+  <script src="js/modules/telemetry_parser.js"></script>
+  <script src="js/components/charts_engine.js"></script>
+  <script src="js/components/raw_table.js"></script>
+
+  <script>
+    const resultsDiv = document.getElementById('test-results');
+    let passed = 0;
+    let failed = 0;
+
+    function assert(name, condition, details = '') {
+      if (condition) {
+        passed++;
+        resultsDiv.innerHTML += `<div class="test-pass">✔ [PASS] ${name} ${details ? '(' + details + ')' : ''}</div>`;
+      } else {
+        failed++;
+        resultsDiv.innerHTML += `<div class="test-fail">✖ [FAIL] ${name} ${details ? ': ' + details : ''}</div>`;
+      }
+    }
+
+    try {
+      // -------------------------------------------------------------
+      // TEST 1: ChartsEngine Initialization & Plot Area Margins
+      // -------------------------------------------------------------
+      const container = document.getElementById('test-charts-container');
+      const engine = new window.ChartsEngine(container);
+      
+      const plotArea = engine.getPlotArea(1000, 500, 1);
+      assert('PlotArea Left Gutter', plotArea.left >= 48, `left margin = ${plotArea.left}px for Y-labels`);
+      assert('PlotArea Bottom Gutter', plotArea.bottom >= 24, `bottom margin = ${plotArea.bottom}px for Time labels`);
+      assert('PlotArea Dimensions Valid', plotArea.width > 800 && plotArea.height > 400, `${plotArea.width}x${plotArea.height}`);
+
+      // -------------------------------------------------------------
+      // TEST 2: Standby / Empty State at t=0 (Before Data)
+      // -------------------------------------------------------------
+      const emptyDomain = engine.computeTimeDomain([]);
+      assert('Empty TimeDomain tMin', emptyDomain.tMin === 0, `tMin = ${emptyDomain.tMin}`);
+      assert('Empty TimeDomain tMax', emptyDomain.tMax === 60, `tMax = ${emptyDomain.tMax}`);
+      assert('Empty TimeDomain Live Origin', emptyDomain.isLiveOrigin === true);
+
+      // Verify redrawAll does not throw on empty history
+      let drawEmptyError = null;
+      try {
+        engine.redrawAll();
+      } catch (err) {
+        drawEmptyError = err.message;
+      }
+      assert('Redraw on Empty History (No Crash)', drawEmptyError === null, drawEmptyError || 'Clean render');
+
+      // -------------------------------------------------------------
+      // TEST 3: Point 0 Visibility at Launchpad (PAD, T=0, Alt=0.0m)
+      // -------------------------------------------------------------
+      const t0 = 1000.0;
+      const p0 = {
+        timestamp: t0,
+        status: 'NOMINAL',
+        sensors: {
+          bmp280: { altitude_m: 0.0, pressure_hpa: 1013.25, temp_c: 15.0 },
+          telemetry: { rssi_lora: -45, snr: 12.0, flight_phase: 'PAD' },
+          imu: { accel_mps2: { x: 0, y: 0, z: 9.81 }, gyro_rads: { x: 0, y: 0, z: 0 } },
+          kalman: { filteredAltitude_m: 0.0, filteredVelocity_mps: 0.0 }
+        }
+      };
+
+      engine.addPoint(p0);
+      assert('Point 0 Ingested', engine.history.length === 1);
+      
+      const visiblePointsAtT0 = engine.getVisiblePoints();
+      assert('Point 0 Visible In Filter', visiblePointsAtT0.length === 1);
+      assert('Point 0 Altitude Equals Zero', visiblePointsAtT0[0].altKalman === 0.0);
+
+      const domainAtT0 = engine.computeTimeDomain(visiblePointsAtT0);
+      assert('Domain at T0 Anchored to Start', domainAtT0.tMin === t0);
+      assert('Domain at T0 Covers Time Window', domainAtT0.tMax === t0 + 60);
+      assert('Domain at T0 isLiveOrigin', domainAtT0.isLiveOrigin === true);
+
+      // Verify single point rendering does not crash and draws beacon
+      let drawP0Error = null;
+      try {
+        engine.redrawAll();
+      } catch (err) {
+        drawP0Error = err.message;
+      }
+      assert('Point 0 Render (No Crash & Beacon Ready)', drawP0Error === null);
+
+      // -------------------------------------------------------------
+      // TEST 4: Progressive Time Advancement (t=0 to t=15s)
+      // -------------------------------------------------------------
+      for (let s = 1; s <= 15; s++) {
+        engine.addPoint({
+          timestamp: t0 + s,
+          status: 'NOMINAL',
+          sensors: {
+            bmp280: { altitude_m: s * 10, pressure_hpa: 1013.25 - s, temp_c: 15.0 - s * 0.1 },
+            telemetry: { rssi_lora: -50, snr: 11.5, flight_phase: 'ASCENT' },
+            imu: { accel_mps2: { x: 0, y: 0, z: 19.6 }, gyro_rads: { x: 0, y: 0, z: 0.1 } },
+            kalman: { filteredAltitude_m: s * 10, filteredVelocity_mps: 10.0 }
+          }
+        });
+      }
+
+      const visibleMidFlight = engine.getVisiblePoints();
+      assert('Mid-Flight Point 0 Retained', visibleMidFlight[0].t === t0, `t0 retained in window`);
+      assert('Mid-Flight Sample Count', visibleMidFlight.length === 16);
+      
+      const midDomain = engine.computeTimeDomain(visibleMidFlight);
+      assert('Mid-Flight Origin Stays at Left', midDomain.isLiveOrigin === true);
+      assert('Mid-Flight Left Margin Holds T0', midDomain.tMin === t0);
+
+      // -------------------------------------------------------------
+      // TEST 5: Reset Behavior
+      // -------------------------------------------------------------
+      engine.reset();
+      assert('History Cleared on Reset', engine.history.length === 0);
+      assert('Pill Alt Reset', engine.elements.pillAlt.textContent.includes('0.0m'));
+      assert('Pill Vz Reset', engine.elements.pillVz.textContent.includes('+0.0m/s'));
+      assert('Pill MaxAlt Reset', engine.elements.pillMaxAlt.textContent === '0.0m');
+
+      // -------------------------------------------------------------
+      // TEST 6: Channel Switching (All 4 Tactical Channels)
+      // -------------------------------------------------------------
+      const channels = ['PROFILE', 'KINEMATICS', 'ENVIRONMENT', 'RF_LINK'];
+      let channelErrors = [];
+      channels.forEach(ch => {
+        try {
+          engine.activeChannel = ch;
+          engine.redrawAll();
+        } catch (err) {
+          channelErrors.push(`${ch}: ${err.message}`);
+        }
+      });
+      assert('All 4 Channels Render Without Error', channelErrors.length === 0, channelErrors.join(', ') || 'All 4 Channels Nominal');
+
+      // -------------------------------------------------------------
+      // TEST 7: Raw Telemetry Component Ingest & Filtering
+      // -------------------------------------------------------------
+      const rawContainer = document.getElementById('test-raw-container');
+      const rawTable = new window.RawTableComponent(rawContainer);
+      rawTable.addPacket(p0);
+      assert('Raw Table Ingest Packet', rawTable.rows.length === 1);
+      assert('Raw Table TBody Row Rendered', rawTable.tbody.children.length === 1);
+
+    } catch (e) {
+      assert('Test Execution Crash', false, e.message);
+    }
+
+    // Final Report Summary
+    const total = passed + failed;
+    resultsDiv.innerHTML += `
+      <div class="test-summary">
+        <strong>TOTAL TESTS: ${total} | PASADOS: <span class="test-pass">${passed}</span> | FALLADOS: <span class="test-fail">${failed}</span></strong>
+        <div id="test-verdict" data-passed="${passed}" data-failed="${failed}" style="margin-top:5px; color:${failed === 0 ? '#00e676' : '#ff1744'};">
+          ${failed === 0 ? '✓ TODOS LOS TESTS PASARON SATISFACTORIAMENTE' : '⚠ EXISTEN FALLOS EN EL BANCO DE PRUEBAS'}
+        </div>
+      </div>
+    `;
+  </script>
+</body>
+</html>
