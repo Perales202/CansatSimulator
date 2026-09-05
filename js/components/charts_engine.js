@@ -41,6 +41,10 @@ class ChartsEngine {
     this.bindEvents();
 
     window.addEventListener('resize', () => this.resizeCanvases());
+    if (window.ResizeObserver && this.container) {
+      this.resizeObserver = new ResizeObserver(() => this.resizeCanvases());
+      this.resizeObserver.observe(this.container);
+    }
   }
 
   renderSkeleton() {
@@ -319,9 +323,20 @@ class ChartsEngine {
     for (const key in this.canvases) {
       const canvas = this.canvases[key];
       if (!canvas) continue;
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.max(100, Math.floor(rect.width * dpr));
-      canvas.height = Math.max(60, Math.floor(rect.height * dpr));
+      const parent = canvas.parentElement;
+      if (!parent) continue;
+
+      const parentRect = parent.getBoundingClientRect();
+      const header = parent.querySelector('.chart-header-bar');
+      const headerH = header ? header.getBoundingClientRect().height : 0;
+
+      const availableW = Math.max(100, Math.floor(parentRect.width));
+      const availableH = Math.max(60, Math.floor(parentRect.height - headerH));
+
+      canvas.style.width = `${availableW}px`;
+      canvas.style.height = `${availableH}px`;
+      canvas.width = Math.floor(availableW * dpr);
+      canvas.height = Math.floor(availableH * dpr);
     }
     this.redrawAll();
   }
@@ -383,7 +398,9 @@ class ChartsEngine {
       };
     }
 
-    const t = packet.timestamp || (Date.now() / 1000);
+    const t = (packet.timestamp !== undefined && packet.timestamp !== null) 
+      ? Number(packet.timestamp) 
+      : (Date.now() / 1000);
 
     // Track Phase Landmark Transitions
     if (phase !== this.lastPhase) {
@@ -1041,12 +1058,12 @@ class ChartsEngine {
     ctx.lineTo(left + width, zeroY);
     ctx.stroke();
 
-    // Ground & Origin Tag at PAD level
+    // Ground & Origin Tag at PAD level (aligned right to avoid obstructing launch curve origin)
     ctx.fillStyle = '#00e5ff';
     ctx.font = `bold ${8 * dpr}px monospace`;
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillText('◱ NIVEL PAD / ORIGEN 0m', left + 6 * dpr, zeroY - 3 * dpr);
+    ctx.fillText('◱ NIVEL PAD / ORIGEN 0m', left + width - 6 * dpr, zeroY - 3 * dpr);
     ctx.restore();
   }
 
@@ -1170,9 +1187,17 @@ class ChartsEngine {
 
     // Fill gradient under curve down to baseline
     if (opts.fillGradient) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
+      ctx.moveTo(firstCoord.x, firstCoord.y);
+      for (let i = 1; i < n; i++) {
+        const coord = getCoords(pts[i]);
+        ctx.lineTo(coord.x, coord.y);
+      }
       const lastCoord = getCoords(pts[n - 1]);
       const baselineY = top + height;
-      ctx.shadowBlur = 0;
       ctx.lineTo(lastCoord.x, baselineY);
       ctx.lineTo(firstCoord.x, baselineY);
       ctx.closePath();
@@ -1182,6 +1207,7 @@ class ChartsEngine {
       grad.addColorStop(1, opts.fillGradient[1]);
       ctx.fillStyle = grad;
       ctx.fill();
+      ctx.restore();
     }
 
     // Origin Beacon Point 0 Marker (if point 0 is in visible range)

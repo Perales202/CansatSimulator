@@ -18,8 +18,8 @@
 
   <!-- Hidden Mount Point for Components -->
   <div id="test-mount" style="position: absolute; left: -9999px; width: 1200px; height: 800px;">
-    <div id="test-charts-container"></div>
-    <div id="test-raw-container"></div>
+    <div id="test-charts-container" style="width: 800px; height: 500px;"></div>
+    <div id="test-raw-container" style="width: 800px; height: 300px;"></div>
   </div>
 
   <!-- Dependencies -->
@@ -164,6 +164,35 @@
       rawTable.addPacket(p0);
       assert('Raw Table Ingest Packet', rawTable.rows.length === 1);
       assert('Raw Table TBody Row Rendered', rawTable.tbody.children.length === 1);
+
+      // -------------------------------------------------------------
+      // TEST 8: Low Altitude Visibility (0m - 130m) & Zero Canvas Overflow
+      // -------------------------------------------------------------
+      const testBox = container.querySelector('.chart-box');
+      const testCanvas = container.querySelector('.chart-canvas');
+      assert('Chart Box Container Exists', testBox !== null);
+      assert('Chart Canvas Element Exists', testCanvas !== null);
+
+      engine.resizeCanvases();
+      assert('Canvas Has Explicit Style Width', testCanvas.style.width !== '');
+      assert('Canvas Has Explicit Style Height', testCanvas.style.height !== '');
+
+      const dpr = window.devicePixelRatio || 1;
+      const plotAreaAlt = engine.getPlotArea(testCanvas.width, testCanvas.height, dpr);
+      const zeroY = plotAreaAlt.top + plotAreaAlt.height;
+      const zeroYCss = zeroY / dpr;
+      const canvasHeightCss = parseFloat(testCanvas.style.height);
+
+      assert('Zero Altitude Baseline Within Canvas Bounds', zeroYCss <= canvasHeightCss, `zeroY=${zeroYCss.toFixed(1)}px <= h=${canvasHeightCss}px`);
+      assert('PlotArea Leaves Margin for Time Labels', (canvasHeightCss - zeroYCss) >= 20, `bottom margin = ${(canvasHeightCss - zeroYCss).toFixed(1)}px`);
+
+      // Altitude 0 to 130m coordinates are well within plot area
+      const maxAltScale = 950;
+      const y0 = plotAreaAlt.top + plotAreaAlt.height - (0 / maxAltScale) * plotAreaAlt.height;
+      const y130 = plotAreaAlt.top + plotAreaAlt.height - (130 / maxAltScale) * plotAreaAlt.height;
+      assert('0m Altitude Coordinate In Canvas', y0 <= testCanvas.height);
+      assert('130m Altitude Coordinate In Canvas', y130 >= plotAreaAlt.top && y130 < y0);
+      assert('Altitude Delta 0-130m Has Distinct Vertical Span', (y0 - y130) > 15, `span = ${(y0 - y130).toFixed(1)}px`);
 
     } catch (e) {
       assert('Test Execution Crash', false, e.message);

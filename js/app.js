@@ -694,8 +694,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (workspaceTabFlight) workspaceTabFlight.style.display = 'grid';
         if (workspaceTabTelemetry) workspaceTabTelemetry.style.display = 'none';
         setTimeout(() => {
+          if (charts && charts.resizeCanvases) charts.resizeCanvases();
           window.dispatchEvent(new Event('resize'));
-        }, 40);
+        }, 30);
       } else if (targetTab === 'telemetry') {
         if (workspaceTabFlight) workspaceTabFlight.style.display = 'none';
         if (workspaceTabTelemetry) workspaceTabTelemetry.style.display = 'flex';
