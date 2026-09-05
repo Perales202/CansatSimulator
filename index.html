@@ -238,6 +238,7 @@ Esperando flujo asíncrono desde ESP32...
         <div class="modal-presets-strip">
           <span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-family:var(--font-display);">PRESETS RÁPIDOS:</span>
           <button class="btn-tactical" id="preset-btn-standard" style="font-size:10px; padding:3px 8px;">Estándar (850m)</button>
+          <button class="btn-tactical" id="preset-btn-drone" style="font-size:10px; padding:3px 8px; color:var(--c-cyan); border-color:var(--border-focus);">🛸 Dron (500m / 5m/s)</button>
           <button class="btn-tactical" id="preset-btn-low" style="font-size:10px; padding:3px 8px;">Baja Altura (400m)</button>
           <button class="btn-tactical" id="preset-btn-windy" style="font-size:10px; padding:3px 8px;">Viento Fuerte (7m/s)</button>
           <button class="btn-tactical" id="preset-btn-high" style="font-size:10px; padding:3px 8px;">Gran Altitud (1200m)</button>
@@ -245,10 +246,40 @@ Esperando flujo asíncrono desde ESP32...
 
         <!-- 2-Column Grid Form -->
         <div class="modal-grid-form">
-          <!-- 1. Apogee target -->
+          <!-- Launch / Elevation Method -->
+          <div class="modal-field-group" style="grid-column: 1 / 3;">
+            <label class="modal-field-label">
+              <span>Método de Elevación / Lanzamiento</span>
+              <span class="unit">PERFIL FÍSICO</span>
+            </label>
+            <select id="cfg-launch-method" class="table-input">
+              <option value="ROCKET" selected>🚀 Cohete Sonda (Propulsión Balística ~4.5G)</option>
+              <option value="DRONE">🛸 Dron Multirrotor (Ascenso Controlado y Suelta)</option>
+            </select>
+          </div>
+
+          <!-- Drone Ascent Speed -->
+          <div class="modal-field-group" id="group-drone-speed">
+            <label class="modal-field-label">
+              <span>Velocidad Ascenso Dron</span>
+              <span class="unit">m/s</span>
+            </label>
+            <input type="number" id="cfg-drone-speed" class="table-input" value="5.0" min="1.0" max="15.0" step="0.5">
+          </div>
+
+          <!-- Drone Hover Duration -->
+          <div class="modal-field-group" id="group-drone-hover">
+            <label class="modal-field-label">
+              <span>Estacionario Previo a Suelta</span>
+              <span class="unit">SEGUNDOS</span>
+            </label>
+            <input type="number" id="cfg-drone-hover" class="table-input" value="2.0" min="0.5" max="10.0" step="0.5">
+          </div>
+
+          <!-- 1. Apogee / Release target -->
           <div class="modal-field-group">
             <label class="modal-field-label">
-              <span>Apogeo Máximo Objetivo</span>
+              <span>Altitud de Suelta / Apogeo</span>
               <span class="unit">METROS</span>
             </label>
             <input type="number" id="cfg-apogee" class="table-input" value="850" min="100" max="5000" step="50">

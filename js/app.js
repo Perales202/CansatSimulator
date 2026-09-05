@@ -202,6 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnApplyModal = document.getElementById('btn-modal-apply');
   const btnConfigToolbar = document.getElementById('sitl-btn-config');
 
+  const selectLaunchMethod = document.getElementById('cfg-launch-method');
+  const inputDroneSpeed = document.getElementById('cfg-drone-speed');
+  const inputDroneHover = document.getElementById('cfg-drone-hover');
+  const groupDroneSpeed = document.getElementById('group-drone-speed');
+  const groupDroneHover = document.getElementById('group-drone-hover');
+
   const inputApogee = document.getElementById('cfg-apogee');
   const inputChute = document.getElementById('cfg-chute-alt');
   const inputMass = document.getElementById('cfg-mass');
@@ -210,6 +216,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectFreq = document.getElementById('cfg-freq');
   const selectModalAnomaly = document.getElementById('cfg-anomaly');
   const chkResetClock = document.getElementById('cfg-reset-clock');
+
+  function updateDroneVisibility() {
+    const isDrone = selectLaunchMethod?.value === 'DRONE';
+    if (groupDroneSpeed) groupDroneSpeed.style.display = isDrone ? 'flex' : 'none';
+    if (groupDroneHover) groupDroneHover.style.display = isDrone ? 'flex' : 'none';
+  }
+  if (selectLaunchMethod) {
+    selectLaunchMethod.addEventListener('change', updateDroneVisibility);
+    updateDroneVisibility();
+  }
 
   function openSitlConfigModal() {
     if (modalConfig) modalConfig.classList.add('active');
@@ -225,12 +241,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Quick Preset Handlers
   const presetStandard = document.getElementById('preset-btn-standard');
+  const presetDrone = document.getElementById('preset-btn-drone');
   const presetLow = document.getElementById('preset-btn-low');
   const presetWindy = document.getElementById('preset-btn-windy');
   const presetHigh = document.getElementById('preset-btn-high');
 
   if (presetStandard) {
     presetStandard.addEventListener('click', () => {
+      if (selectLaunchMethod) {
+        selectLaunchMethod.value = 'ROCKET';
+        updateDroneVisibility();
+      }
       if (inputApogee) inputApogee.value = 850;
       if (inputChute) inputChute.value = 500;
       if (inputMass) inputMass.value = 350;
@@ -238,6 +259,27 @@ document.addEventListener('DOMContentLoaded', () => {
       if (inputWindDir) {
         inputWindDir.value = 45;
         updateWindCardinalLabel(45);
+      }
+      if (selectFreq) selectFreq.value = '2';
+      if (selectModalAnomaly) selectModalAnomaly.value = 'NONE';
+    });
+  }
+
+  if (presetDrone) {
+    presetDrone.addEventListener('click', () => {
+      if (selectLaunchMethod) {
+        selectLaunchMethod.value = 'DRONE';
+        updateDroneVisibility();
+      }
+      if (inputDroneSpeed) inputDroneSpeed.value = 5.0;
+      if (inputDroneHover) inputDroneHover.value = 2.0;
+      if (inputApogee) inputApogee.value = 500;
+      if (inputChute) inputChute.value = 350;
+      if (inputMass) inputMass.value = 350;
+      if (inputWindSpeed) inputWindSpeed.value = 2.8;
+      if (inputWindDir) {
+        inputWindDir.value = 60;
+        updateWindCardinalLabel(60);
       }
       if (selectFreq) selectFreq.value = '2';
       if (selectModalAnomaly) selectModalAnomaly.value = 'NONE';
@@ -344,6 +386,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Apply Modal Parameters and Start Simulation
   if (btnApplyModal) {
     btnApplyModal.addEventListener('click', () => {
+      const launchMethod = selectLaunchMethod?.value || 'ROCKET';
+      const droneSpeed = Number(inputDroneSpeed?.value || 5.0);
+      const droneHover = Number(inputDroneHover?.value || 2.0);
       const apogee = Number(inputApogee?.value || 850);
       const chuteAlt = Number(inputChute?.value || 500);
       const mass = Number(inputMass?.value || 350);
@@ -353,6 +398,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const anomaly = selectModalAnomaly?.value || 'NONE';
 
       sitl.configure({
+        launchMethod: launchMethod,
+        droneClimbRate_mps: droneSpeed,
+        droneHoverTime_s: droneHover,
         apogeeTarget_m: apogee,
         chuteDeployAlt_m: chuteAlt,
         massGrams: mass,

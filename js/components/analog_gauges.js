@@ -336,10 +336,10 @@ class AnalogGaugesComponent {
       this.elements.flightPhase.textContent = phase;
 
       // Dynamic phase coloring
-      if (phase.includes('ASCENSO')) {
+      if (phase.includes('ASCENSO') || phase.includes('DRON') || phase.includes('ELEVACIÓN')) {
         this.elements.flightPhase.style.color = 'var(--c-cyan)';
         this.elements.flightPhase.style.textShadow = '0 0 8px rgba(0,229,255,0.6)';
-      } else if (phase.includes('APOGEO')) {
+      } else if (phase.includes('APOGEO') || phase.includes('ESTACIONARIO') || phase.includes('SUELTA') || phase.includes('DESENGANCHE')) {
         this.elements.flightPhase.style.color = 'var(--c-gold)';
         this.elements.flightPhase.style.textShadow = '0 0 8px rgba(255,215,0,0.6)';
       } else if (phase.includes('CAÍDA LIBRE') || phase.includes('FALLO')) {

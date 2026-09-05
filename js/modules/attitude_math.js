@@ -164,6 +164,35 @@ class AttitudeDynamics {
       const pitchRad = (euler.pitch_deg * Math.PI) / 180;
 
       switch (flightPhase) {
+        case 'DRONE_ASCENT':
+          // CanSat suspended under a drone with tether/harness
+          // Tether restoring torque aligns CanSat vertically
+          const kTether = 0.012;
+          const bTether = 0.007;
+          // Rotor downwash and wind gust induce gentle sway (+- 2 to 4 deg)
+          const downwashSway = Math.sin(Date.now() / 500 + s * dtSub) * 0.00025;
+          const droneWindTilt = (windSpeedMps / 12) * 0.05;
+          torque[0] = -kTether * (rollRad - droneWindTilt) - bTether * this.omega[0] + downwashSway;
+          torque[1] = -kTether * pitchRad - bTether * this.omega[1] + downwashSway * 0.7;
+          torque[2] = -0.003 * this.omega[2]; // Damped yaw spin (no rocket roll)
+          break;
+
+        case 'DRONE_HOVER':
+          // Tethered in hover prior to release
+          const kHov = 0.015;
+          const bHov = 0.008;
+          torque[0] = -kHov * rollRad - bHov * this.omega[0];
+          torque[1] = -kHov * pitchRad - bHov * this.omega[1];
+          torque[2] = -0.004 * this.omega[2];
+          break;
+
+        case 'DRONE_RELEASE':
+          // Moment of release from the servo: mild separation impulse
+          torque[0] = (Math.random() - 0.5) * 0.001;
+          torque[1] = (Math.random() - 0.5) * 0.001;
+          torque[2] = -0.001 * this.omega[2];
+          break;
+
         case 'ASCENT':
           // Rocket fin aerodynamic restoring torque: aligns nose with ascent velocity vector
           // + spin-stabilization along longitudinal Z-axis with aerodynamic drag limiting spin to ~1 rev/sec

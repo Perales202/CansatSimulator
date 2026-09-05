@@ -137,13 +137,20 @@ class GroundStationState {
     const vz = this.metrics.descentRate_mps;
     const maxAlt = this.metrics.maxAltitude_m;
     const status = packet.status || '';
+    const telem = packet.sensors?.telemetry || {};
+    const isDrone = telem.launch_method === 'DRONE' || packet.launch_method === 'DRONE';
+    const packetPhase = telem.flight_phase || packet.flight_phase || '';
 
-    if (maxAlt < 5 && alt <= 3 && Math.abs(vz) < 1.0) {
+    if (packetPhase === 'DRONE_HOVER') {
+      this.metrics.flightPhase = 'ESTACIONARIO (DRON)';
+    } else if (packetPhase === 'DRONE_RELEASE') {
+      this.metrics.flightPhase = 'DESENGANCHE / SUELTA';
+    } else if (maxAlt < 5 && alt <= 3 && Math.abs(vz) < 1.0) {
       this.metrics.flightPhase = 'PRE-LANZAMIENTO';
-    } else if (vz > 2.0) {
-      this.metrics.flightPhase = 'ASCENSO / PROPULSIÓN';
+    } else if (vz > 1.0) {
+      this.metrics.flightPhase = isDrone ? 'ELEVACIÓN CON DRON' : 'ASCENSO / PROPULSIÓN';
     } else if (maxAlt > 30 && alt >= (maxAlt - 25) && Math.abs(vz) <= 2.5) {
-      this.metrics.flightPhase = 'APOGEO';
+      this.metrics.flightPhase = isDrone ? 'ESTACIONARIO / SUELTA' : 'APOGEO';
     } else if (status.includes('CHUTE_FAIL') || (maxAlt > 50 && vz < -18.0)) {
       this.metrics.flightPhase = 'CAÍDA LIBRE (FALLO PARACAÍDAS)';
     } else if (vz < -1.0) {

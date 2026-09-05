@@ -396,6 +396,12 @@ class TacticalRadarComponent {
       if (this.flightPhase.includes('CAÍDA LIBRE') || this.flightPhase.includes('FALLO')) {
         el.statusText.textContent = 'ESTABILIDAD: VOLTEO CRÍTICO';
         el.statusBadge.className = 'cansat-status-badge critical';
+      } else if (this.flightPhase.includes('DRON') || this.flightPhase.includes('ELEVACIÓN')) {
+        el.statusText.textContent = 'ELEVACIÓN: DRON MULTIRROTOR';
+        el.statusBadge.className = 'cansat-status-badge nominal';
+      } else if (this.flightPhase.includes('ESTACIONARIO') || this.flightPhase.includes('SUELTA') || this.flightPhase.includes('DESENGANCHE')) {
+        el.statusText.textContent = 'SUELTA: DESACOPLE SERVO';
+        el.statusBadge.className = 'cansat-status-badge nominal';
       } else if (absRoll > 30 || absPitch > 30) {
         el.statusText.textContent = 'ESTABILIDAD: ALTA OSCILACIÓN';
         el.statusBadge.className = 'cansat-status-badge warning';
@@ -605,6 +611,19 @@ class TacticalRadarComponent {
       }
     }
 
+    // 4. Drone Suspension Tether (When in Drone Elevation)
+    const isDroneTetherActive = this.flightPhase.includes('DRON') || this.flightPhase.includes('ELEVACIÓN');
+    if (isDroneTetherActive) {
+      const tetherH = halfH + 80 * dpr;
+      const hookTop = project3D(0, tetherH, 0);
+      faces.push({
+        type: 'drone_tether',
+        z: (topCenter.z + hookTop.z) / 2,
+        bottomPoint: topCenter,
+        topPoint: hookTop
+      });
+    }
+
     // Sort Faces Back-to-Front (Painter's Algorithm)
     faces.sort((a, b) => a.z - b.z);
 
@@ -708,6 +727,51 @@ class TacticalRadarComponent {
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.lineWidth = 0.75 * dpr;
         ctx.stroke();
+
+      } else if (f.type === 'drone_tether') {
+        // High-strength suspension cable from CanSat top bulkhead to drone release servo
+        ctx.save();
+        // Outer glow
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+        ctx.lineWidth = 3.5 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(f.bottomPoint.px, f.bottomPoint.py);
+        ctx.lineTo(f.topPoint.px, f.topPoint.py);
+        ctx.stroke();
+
+        // Core braided line
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 1.8 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(f.bottomPoint.px, f.bottomPoint.py);
+        ctx.lineTo(f.topPoint.px, f.topPoint.py);
+        ctx.stroke();
+
+        // Drone Servo Release Mechanism (Anodized Hook & Bracket)
+        const hookX = f.topPoint.px;
+        const hookY = f.topPoint.py;
+        ctx.fillStyle = '#ffd166';
+        ctx.beginPath();
+        ctx.arc(hookX, hookY, 4.5 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Drone Rotor Wash / Downwash Flow Indicators
+        const washT = (Date.now() / 70) % 20;
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.22)';
+        ctx.lineWidth = 1 * dpr;
+        [-22 * dpr, 22 * dpr].forEach((xOff) => {
+          ctx.beginPath();
+          ctx.moveTo(hookX + xOff, hookY - 8 * dpr + washT);
+          ctx.lineTo(hookX + xOff * 1.25, hookY + 18 * dpr + washT);
+          ctx.stroke();
+        });
+
+        // Label above hook
+        ctx.fillStyle = 'rgba(0, 229, 255, 0.9)';
+        ctx.font = `bold ${8.5 * dpr}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('▲ ANCLAJE DRON (SERVO)', hookX, hookY - 9 * dpr);
+        ctx.restore();
       }
     });
 

@@ -39,12 +39,16 @@ class PhysicsSITL {
       posY_m: 0,
       windSpeed_mps: 3.2,
       windDirection_deg: 45,     // Blowing towards North-East
-      phase: 'PAD',               // PAD -> ASCENT -> APOGEE -> FREEFALL -> PARACHUTE -> LANDED
+      phase: 'PAD',               // PAD -> ASCENT/DRONE_ASCENT -> APOGEE/HOVER -> FREEFALL -> PARACHUTE -> LANDED
       elapsedTime_s: 0,
-      apogeeTarget_m: 850,        // Simulated apogee
+      apogeeTarget_m: 850,        // Simulated apogee / release target
       chuteDeployAlt_m: 500,      // Parachute deployment altitude
       parachuteDeployed: false,
-      anomaly: null               // null, 'PARACHUTE_FAILURE', 'BARO_SPIKE', 'SIGNAL_DROP'
+      anomaly: null,              // null, 'PARACHUTE_FAILURE', 'BARO_SPIKE', 'SIGNAL_DROP'
+      launchMethod: 'ROCKET',     // 'ROCKET' | 'DRONE'
+      droneClimbRate_mps: 5.0,    // Steady climb speed with drone
+      droneHoverTime_s: 2.0,      // Hover time before release (seconds)
+      hoverElapsed_s: 0
     };
 
     // Random Number Generator with Box-Muller Gaussian Noise
@@ -65,6 +69,9 @@ class PhysicsSITL {
    * Configure physical mission parameters from the SITL popup dialog
    */
   configure(params = {}) {
+    if (params.launchMethod !== undefined) this.state.launchMethod = params.launchMethod;
+    if (params.droneClimbRate_mps !== undefined) this.state.droneClimbRate_mps = Number(params.droneClimbRate_mps);
+    if (params.droneHoverTime_s !== undefined) this.state.droneHoverTime_s = Number(params.droneHoverTime_s);
     if (params.apogeeTarget_m !== undefined) this.state.apogeeTarget_m = Number(params.apogeeTarget_m);
     if (params.chuteDeployAlt_m !== undefined) this.state.chuteDeployAlt_m = Number(params.chuteDeployAlt_m);
     if (params.massGrams !== undefined) this.CANSAT_MASS = Number(params.massGrams) / 1000;
@@ -117,6 +124,7 @@ class PhysicsSITL {
     this.state.elapsedTime_s = 0;
     this.state.parachuteDeployed = false;
     this.state.anomaly = null;
+    this.state.hoverElapsed_s = 0;
 
     if (this.attitude) this.attitude.reset();
     if (this.kalman) this.kalman.reset(0);
@@ -154,8 +162,50 @@ class PhysicsSITL {
         s.acceleration_mps2 = 0;
         // Auto-launch after 3 seconds in PAD
         if (s.elapsedTime_s >= 3) {
-          s.phase = 'ASCENT';
+          s.phase = (s.launchMethod === 'DRONE') ? 'DRONE_ASCENT' : 'ASCENT';
         }
+        break;
+
+      case 'DRONE_ASCENT':
+        // Steady multirotor drone climb
+        const targetVz = s.droneClimbRate_mps || 5.0;
+        const vDiff = targetVz - s.velocity_mps;
+        // Smooth initial acceleration ramp (~2.5 m/s^2 max)
+        const climbAcc = Math.max(-2.0, Math.min(3.0, vDiff * 2.5));
+        s.acceleration_mps2 = climbAcc;
+        s.velocity_mps += s.acceleration_mps2 * dt;
+        s.altitude_m += s.velocity_mps * dt;
+
+        // Mild wind drift while climbing
+        const climbWindRad = (s.windDirection_deg * Math.PI) / 180;
+        s.posX_m += Math.sin(climbWindRad) * (s.windSpeed_mps * 0.25) * dt;
+        s.posY_m += Math.cos(climbWindRad) * (s.windSpeed_mps * 0.25) * dt;
+
+        if (s.altitude_m >= s.apogeeTarget_m) {
+          s.altitude_m = s.apogeeTarget_m;
+          s.velocity_mps = 0;
+          s.acceleration_mps2 = 0;
+          s.phase = 'DRONE_HOVER';
+          s.hoverElapsed_s = 0;
+        }
+        break;
+
+      case 'DRONE_HOVER':
+        // Hovering at release altitude before servo drop
+        s.velocity_mps = 0;
+        s.acceleration_mps2 = 0;
+        s.hoverElapsed_s += dt;
+
+        if (s.hoverElapsed_s >= (s.droneHoverTime_s || 2.0)) {
+          s.phase = 'DRONE_RELEASE';
+        }
+        break;
+
+      case 'DRONE_RELEASE':
+        // Servo release actuation: instant transition into gravitational descent
+        s.phase = 'FREEFALL';
+        s.velocity_mps = 0;
+        s.acceleration_mps2 = -this.GRAVITY;
         break;
 
       case 'ASCENT':
@@ -334,7 +384,9 @@ class PhysicsSITL {
         telemetry: {
           rssi_lora: Math.round(baseRssi),
           snr: Number(baseSnr.toFixed(1)),
-          grid_ref: gridRefStr
+          grid_ref: gridRefStr,
+          launch_method: s.launchMethod,
+          flight_phase: s.phase
         },
         imu: imuData,
         kalman: kalmanData
