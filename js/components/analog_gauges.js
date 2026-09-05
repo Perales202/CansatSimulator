@@ -65,15 +65,15 @@ class AnalogGaugesComponent {
 
     // Half-dial tick configurations
     const vspeedTicks = generateHalfDialTicks([
-      { frac: 0.0, isMajor: true, label: '-50' },
+      { frac: 0.0, isMajor: true, label: '-200' },
       { frac: 0.125, isMajor: false },
-      { frac: 0.25, isMajor: true, label: '-25' },
+      { frac: 0.25, isMajor: true, label: '-100' },
       { frac: 0.375, isMajor: false },
       { frac: 0.5, isMajor: true, label: '0', color: 'var(--c-cyan)' },
       { frac: 0.625, isMajor: false },
-      { frac: 0.75, isMajor: true, label: '+25' },
+      { frac: 0.75, isMajor: true, label: '+100' },
       { frac: 0.875, isMajor: false },
-      { frac: 1.0, isMajor: true, label: '+50' }
+      { frac: 1.0, isMajor: true, label: '+200' }
     ]);
 
     const baroTicks = generateHalfDialTicks([
@@ -169,11 +169,11 @@ class AnalogGaugesComponent {
           </div>
         </div>
 
-        <!-- 2. Variometer Gauge (Half-Dial: -50 m/s to +50 m/s with Center Zero) -->
+        <!-- 2. Variometer Gauge (Half-Dial: -200 m/s to +200 m/s with Center Zero) -->
         <div class="gauge-container">
           <div class="gauge-title-badge">
             <span>VARIÓMETRO / TASA V.</span>
-            <span class="gauge-unit">±50 m/s</span>
+            <span class="gauge-unit">±200 m/s</span>
           </div>
           <div class="half-dial-wrap">
             <!-- Background Track & Value Arc (Under Needle) -->
@@ -191,9 +191,9 @@ class AnalogGaugesComponent {
             <div class="half-dial-hub"></div>
           </div>
           <div class="half-dial-limits">
-            <span>-50</span>
+            <span>-200</span>
             <span style="color:var(--c-cyan);">0</span>
-            <span>+50</span>
+            <span>+200</span>
           </div>
           <div class="gauge-footer-bar">
             <div class="gauge-footer-val">
@@ -403,22 +403,22 @@ class AnalogGaugesComponent {
       }
     }
 
-    // 2. UPDATE VARIOMETER (Half-Dial: -50 m/s to +50 m/s)
+    // 2. UPDATE VARIOMETER (Half-Dial: -200 m/s to +200 m/s)
     const vz = (kalman.filteredVelocity_mps !== undefined) 
       ? kalman.filteredVelocity_mps 
       : (metrics?.descentRate_mps || 0);
 
     if (this.elements.vspeedTop) {
       this.elements.vspeedTop.textContent = `${vz >= 0 ? '+' : ''}${vz.toFixed(1)} m/s`;
-      this.elements.vspeedTop.style.color = vz < -25 ? 'var(--c-critical)' : (vz < -8 ? 'var(--c-warning)' : 'var(--c-cyan)');
+      this.elements.vspeedTop.style.color = vz < -40 ? 'var(--c-critical)' : (vz < -10 ? 'var(--c-warning)' : 'var(--c-cyan)');
     }
     if (this.elements.vspeedNum) {
       this.elements.vspeedNum.textContent = `${vz >= 0 ? '+' : ''}${vz.toFixed(1)}`;
-      this.elements.vspeedNum.style.color = vz < -25 ? 'var(--c-critical)' : (vz < -8 ? 'var(--c-warning)' : 'var(--c-cyan)');
+      this.elements.vspeedNum.style.color = vz < -40 ? 'var(--c-critical)' : (vz < -10 ? 'var(--c-warning)' : 'var(--c-cyan)');
     }
     if (this.elements.vspeedNeedle && this.elements.vspeedArc) {
-      const vzClamped = Math.max(-50, Math.min(50, vz));
-      const vzFrac = (vzClamped - (-50)) / (50 - (-50)); // 0.5 at 0 m/s
+      const vzClamped = Math.max(-200, Math.min(200, vz));
+      const vzFrac = (vzClamped - (-200)) / (200 - (-200)); // 0.5 at 0 m/s
       const needleDeg = -90 + vzFrac * 180;
       this.elements.vspeedNeedle.style.transform = `rotate(${needleDeg.toFixed(1)}deg)`;
 
