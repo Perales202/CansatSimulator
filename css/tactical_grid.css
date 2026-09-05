@@ -506,6 +506,14 @@
   color: var(--c-warning);
 }
 
+.chart-metric-pill .metric-val.critical {
+  color: var(--c-critical);
+}
+
+.chart-metric-pill .metric-val.nominal {
+  color: var(--c-nominal);
+}
+
 /* Dual Canvas Grid Container */
 .charts-grid {
   display: grid;
