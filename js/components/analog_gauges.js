@@ -101,20 +101,24 @@ class AnalogGaugesComponent {
 
     this.container.innerHTML = `
       <div class="instruments-grid">
-        <!-- Flight Status Banner -->
+        <!-- Flight Status & Vector Dynamics Banner -->
         <div class="flight-state-banner">
-          <div>
-            <span class="gauge-unit">ESTADO DE VUELO:</span>
+          <div class="flight-state-primary">
+            <div class="flight-state-label-wrap">
+              <span class="flight-beacon-indicator" id="flight-beacon-indicator"></span>
+              <span class="flight-banner-label">ESTADO DE VUELO:</span>
+            </div>
             <span id="flight-phase-val" class="flight-phase-tag">PRE-LANZAMIENTO</span>
           </div>
-          <div style="display:flex; align-items:center; gap:12px;">
-            <div class="descent-rate-indicator">
-              <span class="gauge-unit">CARGA G:</span>
-              <span id="gforce-val" class="font-mono" style="font-weight:700; color:var(--c-nominal);">1.00 G</span>
+          <div class="flight-state-telemetry">
+            <div class="flight-telemetry-cell">
+              <span class="flight-sub-label">CARGA G:</span>
+              <span id="gforce-val" class="flight-stat-value font-mono" style="color:var(--c-nominal);">1.00 G</span>
             </div>
-            <div class="descent-rate-indicator">
-              <span class="gauge-unit">V. VERTICAL:</span>
-              <span id="vspeed-val" class="font-mono" style="font-weight:700; color:var(--c-cyan);">+0.0 m/s</span>
+            <div class="flight-telemetry-separator"></div>
+            <div class="flight-telemetry-cell">
+              <span class="flight-sub-label">V. VERTICAL:</span>
+              <span id="vspeed-val" class="flight-stat-value font-mono" style="color:var(--c-cyan);">+0.0 m/s</span>
             </div>
           </div>
         </div>
@@ -284,6 +288,7 @@ class AnalogGaugesComponent {
   cacheElements() {
     this.elements = {
       flightPhase: document.getElementById('flight-phase-val'),
+      flightBeacon: document.getElementById('flight-beacon-indicator'),
       vspeedTop: document.getElementById('vspeed-val'),
       gforce: document.getElementById('gforce-val'),
 
@@ -524,26 +529,51 @@ class AnalogGaugesComponent {
       }
     }
 
-    // 9. UPDATE FLIGHT PHASE TAG
+    // 9. UPDATE FLIGHT PHASE TAG & TACTICAL BEACON
     if (this.elements.flightPhase && metrics) {
       const phase = metrics.flightPhase || 'TRANSMITIENDO';
       this.elements.flightPhase.textContent = phase;
 
       if (phase.includes('ASCENSO') || phase.includes('DRON') || phase.includes('ELEVACIÓN')) {
         this.elements.flightPhase.style.color = 'var(--c-cyan)';
+        this.elements.flightPhase.style.borderColor = 'rgba(0, 229, 255, 0.4)';
         this.elements.flightPhase.style.textShadow = '0 0 8px rgba(0,229,255,0.6)';
+        if (this.elements.flightBeacon) {
+          this.elements.flightBeacon.style.background = 'var(--c-cyan)';
+          this.elements.flightBeacon.style.boxShadow = '0 0 8px var(--c-cyan)';
+        }
       } else if (phase.includes('APOGEO') || phase.includes('ESTACIONARIO') || phase.includes('SUELTA') || phase.includes('DESENGANCHE')) {
         this.elements.flightPhase.style.color = 'var(--c-gold)';
+        this.elements.flightPhase.style.borderColor = 'rgba(255, 215, 0, 0.4)';
         this.elements.flightPhase.style.textShadow = '0 0 8px rgba(255,215,0,0.6)';
+        if (this.elements.flightBeacon) {
+          this.elements.flightBeacon.style.background = 'var(--c-gold)';
+          this.elements.flightBeacon.style.boxShadow = '0 0 8px var(--c-gold)';
+        }
       } else if (phase.includes('CAÍDA LIBRE') || phase.includes('FALLO')) {
         this.elements.flightPhase.style.color = 'var(--c-critical)';
+        this.elements.flightPhase.style.borderColor = 'rgba(255, 23, 68, 0.5)';
         this.elements.flightPhase.style.textShadow = '0 0 8px rgba(255,23,68,0.7)';
+        if (this.elements.flightBeacon) {
+          this.elements.flightBeacon.style.background = 'var(--c-critical)';
+          this.elements.flightBeacon.style.boxShadow = '0 0 8px var(--c-critical)';
+        }
       } else if (phase.includes('DESCENSO') || phase.includes('TIERRA')) {
         this.elements.flightPhase.style.color = 'var(--c-nominal)';
+        this.elements.flightPhase.style.borderColor = 'rgba(0, 230, 118, 0.4)';
         this.elements.flightPhase.style.textShadow = '0 0 8px rgba(0,230,118,0.5)';
+        if (this.elements.flightBeacon) {
+          this.elements.flightBeacon.style.background = 'var(--c-nominal)';
+          this.elements.flightBeacon.style.boxShadow = '0 0 8px var(--c-nominal)';
+        }
       } else {
         this.elements.flightPhase.style.color = 'var(--text-secondary)';
+        this.elements.flightPhase.style.borderColor = 'rgba(255, 255, 255, 0.15)';
         this.elements.flightPhase.style.textShadow = 'none';
+        if (this.elements.flightBeacon) {
+          this.elements.flightBeacon.style.background = 'var(--text-secondary)';
+          this.elements.flightBeacon.style.boxShadow = 'none';
+        }
       }
     }
   }
