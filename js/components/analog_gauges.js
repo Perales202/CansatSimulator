@@ -1,8 +1,13 @@
 /**
  * ============================================================================
  * CAN-SAT ANALOG INSTRUMENT CLUSTER
- * Aviation-grade dial instruments: Dual-needle Altimeter, Barometer,
- * Temperature thermometer, LoRa Link quality bars, Variometer, and G-Force.
+ * Aviation-grade cockpit instruments:
+ * - Altimeter: Classic circular 3-needle aviation dial with 10,000m scale,
+ *   thousands odometer sub-window and dynamic flight-level indicators.
+ * - Variometer: 180° Half-dial (-20 m/s to +20 m/s with center-zero).
+ * - Barometer: 180° Half-dial (700 to 1050 hPa with MSL sea-level indicator).
+ * - Temperature: 180° Half-dial (-20°C to +50°C with freeze & thermal limits).
+ * - LoRa RF Link: Linear tactical bars for signal strength & SNR.
  * ============================================================================
  */
 
@@ -14,7 +19,7 @@ class AnalogGaugesComponent {
   }
 
   renderSkeleton() {
-    // Generate aviation altimeter tick marks & dial numbers (0 through 9)
+    // 1. Generate aviation circular altimeter tick marks & dial numbers (0 through 9)
     const dialTicks = Array.from({ length: 50 }).map((_, i) => {
       const angle = i * 7.2;
       const isMajor = i % 5 === 0;
@@ -25,7 +30,7 @@ class AnalogGaugesComponent {
       const y1 = 60 + r1 * Math.sin(rad);
       const x2 = 60 + r2 * Math.cos(rad);
       const y2 = 60 + r2 * Math.sin(rad);
-      return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${isMajor ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)'}" stroke-width="${isMajor ? 1.5 : 0.8}" />`;
+      return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${isMajor ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)'}" stroke-width="${isMajor ? 1.5 : 0.8}" />`;
     }).join('');
 
     const dialNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => {
@@ -34,6 +39,65 @@ class AnalogGaugesComponent {
       const ty = 60 + 38 * Math.sin(rad) + 3;
       return `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-family="var(--font-mono)" font-size="8.5" font-weight="700" fill="rgba(255,255,255,0.85)" text-anchor="middle">${num}</text>`;
     }).join('');
+
+    // 2. Helper to generate Half-Dial (Medio Dial) radial tick marks and labels
+    const generateHalfDialTicks = (ticksConfig) => {
+      return ticksConfig.map(t => {
+        const angleDeg = 180 - t.frac * 180;
+        const rad = angleDeg * Math.PI / 180;
+        const rOuter = 46;
+        const rInner = t.isMajor ? 37 : 41;
+        const x1 = 60 + rInner * Math.cos(rad);
+        const y1 = 60 - rInner * Math.sin(rad);
+        const x2 = 60 + rOuter * Math.cos(rad);
+        const y2 = 60 - rOuter * Math.sin(rad);
+
+        let labelEl = '';
+        if (t.label) {
+          const rText = 29;
+          const lx = 60 + rText * Math.cos(rad);
+          const ly = 60 - rText * Math.sin(rad) + 2.5;
+          labelEl = `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-family="var(--font-mono)" font-size="6.8" font-weight="700" fill="${t.color || 'rgba(255,255,255,0.7)'}" text-anchor="middle">${t.label}</text>`;
+        }
+        return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${t.color || (t.isMajor ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.22)')}" stroke-width="${t.isMajor ? 1.4 : 0.8}" />${labelEl}`;
+      }).join('');
+    };
+
+    // Half-dial tick configurations
+    const vspeedTicks = generateHalfDialTicks([
+      { frac: 0.0, isMajor: true, label: '-20' },
+      { frac: 0.125, isMajor: false },
+      { frac: 0.25, isMajor: true, label: '-10' },
+      { frac: 0.375, isMajor: false },
+      { frac: 0.5, isMajor: true, label: '0', color: 'var(--c-cyan)' },
+      { frac: 0.625, isMajor: false },
+      { frac: 0.75, isMajor: true, label: '+10' },
+      { frac: 0.875, isMajor: false },
+      { frac: 1.0, isMajor: true, label: '+20' }
+    ]);
+
+    const baroTicks = generateHalfDialTicks([
+      { frac: 0.0, isMajor: true, label: '700' },
+      { frac: 0.143, isMajor: false },
+      { frac: 0.286, isMajor: true },
+      { frac: 0.429, isMajor: false },
+      { frac: 0.571, isMajor: true, label: '900' },
+      { frac: 0.714, isMajor: false },
+      { frac: 0.857, isMajor: true },
+      { frac: 0.895, isMajor: true, label: 'MSL', color: 'var(--c-gold)' },
+      { frac: 1.0, isMajor: true, label: '1050' }
+    ]);
+
+    const tempTicks = generateHalfDialTicks([
+      { frac: 0.0, isMajor: true, label: '-20' },
+      { frac: 0.143, isMajor: false },
+      { frac: 0.286, isMajor: true, label: '0°', color: 'var(--c-cyan)' },
+      { frac: 0.429, isMajor: false },
+      { frac: 0.571, isMajor: true, label: '20' },
+      { frac: 0.714, isMajor: false },
+      { frac: 0.857, isMajor: true },
+      { frac: 1.0, isMajor: true, label: '50' }
+    ]);
 
     this.container.innerHTML = `
       <div class="instruments-grid">
@@ -55,11 +119,11 @@ class AnalogGaugesComponent {
           </div>
         </div>
 
-        <!-- 1. Altimeter Dial (Dual-needle Aviation Altimeter) -->
+        <!-- 1. Altimeter Dial (Classic Aviation Circular Dial with 3 Needles + 10,000m Capacity) -->
         <div class="gauge-container">
           <div class="gauge-title-badge">
             <span>ALTÍMETRO BAROMÉTRICO</span>
-            <span class="gauge-unit">METROS</span>
+            <span class="gauge-unit">0-10.000m</span>
           </div>
           <div class="analog-dial" id="altimeter-dial">
             <!-- Authentic Aviation Dial Face with Graduation Ring -->
@@ -69,13 +133,24 @@ class AnalogGaugesComponent {
               ${dialTicks}
               ${dialNumbers}
             </svg>
+
+            <!-- Thousands Odometer Counter Sub-Window (Kollsman Style) -->
+            <div class="altimeter-k-window" id="altimeter-k-box">
+              <span style="font-size:7px; opacity:0.7;">FL</span>
+              <span id="alt-k-val" style="color:#ffd166; font-weight:800;">0</span>
+              <span style="font-size:7px; opacity:0.7;">km</span>
+            </div>
+
             <!-- Center pin -->
             <div class="dial-center-pin"></div>
-            <!-- Secondary needle (1000s meters) -->
-            <div class="dial-needle secondary" id="altimeter-needle-slow" title="Aguja de 1000 metros"></div>
-            <!-- Primary needle (100s meters) -->
+            <!-- Tertiary needle (10,000s meters - Gold pointer with arrow tip) -->
+            <div class="dial-needle tenk" id="altimeter-needle-tenk" title="Aguja de 10.000 metros"></div>
+            <!-- Secondary needle (1000s meters - Medium/Amber) -->
+            <div class="dial-needle secondary" id="altimeter-needle-slow" title="Aguja de 1.000 metros"></div>
+            <!-- Primary needle (100s meters - Long/Cyan) -->
             <div class="dial-needle" id="altimeter-needle-fast" title="Aguja de 100 metros"></div>
-            <!-- Numeric Readout Overlay (Kollsman sub-window style) -->
+
+            <!-- Numeric Readout Overlay -->
             <div class="gauge-readout altimeter-readout">
               <span class="readout-primary" id="alt-num-val">0.0</span>
               <span class="readout-sub">M.S.N.M.</span>
@@ -86,86 +161,117 @@ class AnalogGaugesComponent {
           </div>
         </div>
 
-        <!-- 2. Barometer Gauge (Pressure Dial in hPa) -->
+        <!-- 2. Variometer Gauge (Half-Dial: -20 m/s to +20 m/s with Center Zero) -->
+        <div class="gauge-container">
+          <div class="gauge-title-badge">
+            <span>VARIÓMETRO / TASA V.</span>
+            <span class="gauge-unit">m/s</span>
+          </div>
+          <div class="half-dial-wrap">
+            <svg class="half-dial-svg" viewBox="0 0 120 72">
+              <path class="half-dial-track" d="M 14,60 A 46,46 0 0,1 106,60" />
+              <path class="half-dial-val" id="vspeed-arc" d="M 14,60 A 46,46 0 0,1 106,60" stroke-dasharray="144.5" stroke-dashoffset="72.2" />
+              ${vspeedTicks}
+            </svg>
+            <div class="half-dial-needle" id="vspeed-needle" style="transform: rotate(0deg);"></div>
+            <div class="half-dial-hub"></div>
+            <div class="half-dial-readout">
+              <span class="readout-primary" id="vspeed-num-val">+0.0</span>
+              <span class="readout-sub">m/s</span>
+            </div>
+          </div>
+          <div class="half-dial-limits">
+            <span>-20</span>
+            <span style="color:var(--c-cyan);">0</span>
+            <span>+20</span>
+          </div>
+          <div style="font-size:9px; color:var(--text-muted); margin-top:2px;">
+            ESTADO: <span id="vspeed-sub-tag" style="color:var(--text-secondary);">ESTABLE</span>
+          </div>
+        </div>
+
+        <!-- 3. Barometer Gauge (Half-Dial: 700 to 1050 hPa) -->
         <div class="gauge-container">
           <div class="gauge-title-badge">
             <span>PRESIÓN ATMOSFÉRICA</span>
             <span class="gauge-unit">hPa</span>
           </div>
-          <div class="gauge-svg-wrap">
-            <svg class="gauge-svg" viewBox="0 0 100 100">
-              <circle class="gauge-meter-track" cx="50" cy="50" r="40"></circle>
-              <circle class="gauge-meter-val" id="pressure-circle" cx="50" cy="50" r="40" stroke-dasharray="251.2" stroke-dashoffset="50"></circle>
+          <div class="half-dial-wrap">
+            <svg class="half-dial-svg" viewBox="0 0 120 72">
+              <path class="half-dial-track" d="M 14,60 A 46,46 0 0,1 106,60" />
+              <path class="half-dial-val" id="pressure-arc" d="M 14,60 A 46,46 0 0,1 106,60" stroke-dasharray="144.5" stroke-dashoffset="15" />
+              ${baroTicks}
             </svg>
-            <div class="gauge-readout">
+            <div class="half-dial-needle" id="pressure-needle" style="transform: rotate(71deg);"></div>
+            <div class="half-dial-hub"></div>
+            <div class="half-dial-readout">
               <span class="readout-primary" id="press-num-val">1013.2</span>
               <span class="readout-sub">BMP280</span>
             </div>
           </div>
-          <div class="gauge-limits-row">
+          <div class="half-dial-limits">
             <span>700</span>
+            <span style="color:var(--text-muted); font-size:7px;">MSL: 1013</span>
             <span>1050</span>
           </div>
-          <div style="font-size:9.5px; color:var(--text-muted);">
+          <div style="font-size:9px; color:var(--text-muted); margin-top:2px;">
             NIVEL DEL MAR: <span style="color:var(--text-secondary);">1013.2 hPa</span>
           </div>
         </div>
 
-        <!-- 3. Ambient Temperature Gauge -->
+        <!-- 4. Ambient Temperature Gauge (Half-Dial: -20°C to +50°C) -->
         <div class="gauge-container">
           <div class="gauge-title-badge">
             <span>TEMPERATURA AMBIENTE</span>
             <span class="gauge-unit">°C</span>
           </div>
-          <div class="gauge-svg-wrap">
-            <svg class="gauge-svg" viewBox="0 0 100 100">
-              <circle class="gauge-meter-track" cx="50" cy="50" r="40"></circle>
-              <circle class="gauge-meter-val" id="temp-circle" cx="50" cy="50" r="40" stroke-dasharray="251.2" stroke-dashoffset="100"></circle>
+          <div class="half-dial-wrap">
+            <svg class="half-dial-svg" viewBox="0 0 120 72">
+              <path class="half-dial-track" d="M 14,60 A 46,46 0 0,1 106,60" />
+              <path class="half-dial-val" id="temp-arc" d="M 14,60 A 46,46 0 0,1 106,60" stroke-dasharray="144.5" stroke-dashoffset="62" />
+              ${tempTicks}
             </svg>
-            <div class="gauge-readout">
-              <span class="readout-primary" id="temp-num-val">22.4</span>
+            <div class="half-dial-needle" id="temp-needle" style="transform: rotate(13deg);"></div>
+            <div class="half-dial-hub"></div>
+            <div class="half-dial-readout">
+              <span class="readout-primary" id="temp-num-val">20.0</span>
               <span class="readout-sub">CELSIUS</span>
             </div>
           </div>
-          <div class="gauge-limits-row">
+          <div class="half-dial-limits">
             <span>-20°</span>
+            <span style="color:rgba(0,229,255,0.7); font-size:7px;">0° HIELO</span>
             <span>+50°</span>
           </div>
-          <div style="font-size:9.5px; color:var(--text-muted);">
+          <div style="font-size:9px; color:var(--text-muted); margin-top:2px;">
             GRADIENTE: <span style="color:var(--text-secondary);">-6.5°C/km</span>
           </div>
         </div>
 
-        <!-- 4. RF Link & Signal Telemetry (RSSI & SNR) -->
-        <div class="gauge-container">
-          <div class="gauge-title-badge">
-            <span>ENLACE LoRa RF</span>
-            <span class="gauge-unit">TELEMETRÍA</span>
+        <!-- 5. RF Link & Signal Telemetry (RSSI & SNR) -->
+        <div class="linear-gauge-group">
+          <div class="gauge-title-badge" style="margin-bottom:2px;">
+            <span>ENLACE LoRa RF // TELEMETRÍA</span>
+            <span id="rf-status-badge" class="badge badge-nominal" style="font-size:9px; padding:1px 5px;">NOMINAL</span>
           </div>
-          <div style="width:100%; display:flex; flex-direction:column; gap:8px; margin-top:6px;">
-            <div>
-              <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:2px;">
-                <span style="color:var(--text-secondary);">RSSI (POTENCIA):</span>
-                <span id="rssi-num-val" class="font-mono" style="color:var(--c-cyan); font-weight:700;">-45 dBm</span>
-              </div>
-              <div class="linear-bar-track">
-                <div class="linear-bar-fill" id="rssi-bar" style="width: 80%;"></div>
-              </div>
-            </div>
 
-            <div>
-              <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:2px;">
-                <span style="color:var(--text-secondary);">SNR (RELACIÓN S/R):</span>
-                <span id="snr-num-val" class="font-mono" style="color:var(--c-cyan); font-weight:700;">+9.2 dB</span>
-              </div>
-              <div class="linear-bar-track">
-                <div class="linear-bar-fill" id="snr-bar" style="width: 85%;"></div>
-              </div>
+          <div class="linear-meter-row">
+            <div class="meter-label-col">
+              <span class="meter-label-title">RSSI POTENCIA</span>
+              <span id="rssi-num-val" class="meter-label-val">-45 dBm</span>
             </div>
+            <div class="linear-bar-track">
+              <div class="linear-bar-fill" id="rssi-bar" style="width: 80%;"></div>
+            </div>
+          </div>
 
-            <div style="display:flex; justify-content:space-between; font-size:9.5px; margin-top:2px;">
-              <span style="color:var(--text-muted);">ESTADO DE ENLACE:</span>
-              <span id="rf-status-badge" class="badge badge-nominal" style="font-size:9px; padding:1px 5px;">NOMINAL</span>
+          <div class="linear-meter-row">
+            <div class="meter-label-col">
+              <span class="meter-label-title">SNR SEÑAL/RUIDO</span>
+              <span id="snr-num-val" class="meter-label-val">+9.2 dB</span>
+            </div>
+            <div class="linear-bar-track">
+              <div class="linear-bar-fill" id="snr-bar" style="width: 85%;"></div>
             </div>
           </div>
         </div>
@@ -178,16 +284,35 @@ class AnalogGaugesComponent {
   cacheElements() {
     this.elements = {
       flightPhase: document.getElementById('flight-phase-val'),
-      vspeed: document.getElementById('vspeed-val'),
+      vspeedTop: document.getElementById('vspeed-val'),
       gforce: document.getElementById('gforce-val'),
+
+      // Altimeter Elements
       needleFast: document.getElementById('altimeter-needle-fast'),
       needleSlow: document.getElementById('altimeter-needle-slow'),
+      needleTenK: document.getElementById('altimeter-needle-tenk'),
+      altKBox: document.getElementById('altimeter-k-box'),
+      altKVal: document.getElementById('alt-k-val'),
       altNum: document.getElementById('alt-num-val'),
       altMax: document.getElementById('alt-max-val'),
-      pressureCircle: document.getElementById('pressure-circle'),
+
+      // Variometer (Half-Dial)
+      vspeedArc: document.getElementById('vspeed-arc'),
+      vspeedNeedle: document.getElementById('vspeed-needle'),
+      vspeedNum: document.getElementById('vspeed-num-val'),
+      vspeedSubTag: document.getElementById('vspeed-sub-tag'),
+
+      // Barometer (Half-Dial)
+      pressureArc: document.getElementById('pressure-arc'),
+      pressureNeedle: document.getElementById('pressure-needle'),
       pressNum: document.getElementById('press-num-val'),
-      tempCircle: document.getElementById('temp-circle'),
+
+      // Temperature (Half-Dial)
+      tempArc: document.getElementById('temp-arc'),
+      tempNeedle: document.getElementById('temp-needle'),
       tempNum: document.getElementById('temp-num-val'),
+
+      // RF Link
       rssiNum: document.getElementById('rssi-num-val'),
       rssiBar: document.getElementById('rssi-bar'),
       snrNum: document.getElementById('snr-num-val'),
@@ -201,6 +326,7 @@ class AnalogGaugesComponent {
 
     const bmp = packet.sensors.bmp280 || {};
     const telem = packet.sensors.telemetry || {};
+    const kalman = packet.sensors.kalman || {};
 
     const alt = bmp.altitude_m ?? 0;
     const press = bmp.pressure_hpa ?? 1013.25;
@@ -208,60 +334,135 @@ class AnalogGaugesComponent {
     const rssi = telem.rssi_lora ?? -80;
     const snr = telem.snr ?? 5.0;
 
-    // 1. Update Altimeter
+    // 1. UPDATE ALTIMETER (Classic Circular 3-Pointer + Odometer, supports up to 10,000m)
     if (this.elements.altNum) {
       this.elements.altNum.textContent = alt.toFixed(1);
     }
-    if (this.elements.altMax && metrics?.maxAltitude_m !== undefined) {
-      this.elements.altMax.textContent = `${metrics.maxAltitude_m.toFixed(1)} m`;
+    if (this.elements.altMax) {
+      const maxA = metrics?.maxAltitude_m !== undefined ? metrics.maxAltitude_m : alt;
+      this.elements.altMax.textContent = `${maxA.toFixed(1)} m`;
     }
 
-    // Needle rotation (Aviation style: 1 full rotation of fast needle = 100m, slow needle = 1000m)
+    // Needle 1: Fast (1 full turn = 100m)
     const degFast = (alt % 100) * 3.6;
+    // Needle 2: Medium (1 full turn = 1,000m)
     const degSlow = (alt % 1000) * 0.36;
-    if (this.elements.needleFast) this.elements.needleFast.style.transform = `rotate(${degFast}deg)`;
-    if (this.elements.needleSlow) this.elements.needleSlow.style.transform = `rotate(${degSlow}deg)`;
+    // Needle 3: Ten-K Pointer (1 full turn = 10,000m) -> At 1,200m points to 1.2, at 2,500m points to 2.5
+    const degTenK = ((alt % 10000) / 10000) * 360;
 
-    // 2. Update Barometer (Standard atmospheric range: 700 to 1050 hPa)
+    if (this.elements.needleFast) this.elements.needleFast.style.transform = `rotate(${degFast.toFixed(1)}deg)`;
+    if (this.elements.needleSlow) this.elements.needleSlow.style.transform = `rotate(${degSlow.toFixed(1)}deg)`;
+    if (this.elements.needleTenK) this.elements.needleTenK.style.transform = `rotate(${degTenK.toFixed(1)}deg)`;
+
+    // Mechanical Thousands Odometer Counter Sub-Window
+    const thousandsK = Math.floor(Math.max(0, alt) / 1000);
+    if (this.elements.altKVal) {
+      this.elements.altKVal.textContent = thousandsK;
+    }
+    if (this.elements.altKBox) {
+      if (thousandsK >= 1) {
+        this.elements.altKBox.classList.add('active-high');
+      } else {
+        this.elements.altKBox.classList.remove('active-high');
+      }
+    }
+
+    // 2. UPDATE VARIOMETER (Half-Dial: -20 m/s to +20 m/s)
+    const vz = (kalman.filteredVelocity_mps !== undefined) 
+      ? kalman.filteredVelocity_mps 
+      : (metrics?.descentRate_mps || 0);
+
+    if (this.elements.vspeedTop) {
+      this.elements.vspeedTop.textContent = `${vz >= 0 ? '+' : ''}${vz.toFixed(1)} m/s`;
+      this.elements.vspeedTop.style.color = vz < -15 ? 'var(--c-critical)' : (vz < -5 ? 'var(--c-warning)' : 'var(--c-cyan)');
+    }
+    if (this.elements.vspeedNum) {
+      this.elements.vspeedNum.textContent = `${vz >= 0 ? '+' : ''}${vz.toFixed(1)}`;
+      this.elements.vspeedNum.style.color = vz < -10 ? 'var(--c-critical)' : (vz < -2 ? 'var(--c-warning)' : 'var(--c-cyan)');
+    }
+    if (this.elements.vspeedNeedle && this.elements.vspeedArc) {
+      const vzClamped = Math.max(-20, Math.min(20, vz));
+      const vzFrac = (vzClamped - (-20)) / (20 - (-20)); // 0.5 at 0 m/s
+      const needleDeg = -90 + vzFrac * 180;
+      this.elements.vspeedNeedle.style.transform = `rotate(${needleDeg.toFixed(1)}deg)`;
+
+      const arcOffset = 144.5 * (1 - vzFrac);
+      this.elements.vspeedArc.style.strokeDashoffset = arcOffset.toFixed(1);
+
+      if (vz < -12) {
+        this.elements.vspeedArc.setAttribute('class', 'half-dial-val critical');
+        this.elements.vspeedNeedle.className = 'half-dial-needle amber';
+        if (this.elements.vspeedSubTag) {
+          this.elements.vspeedSubTag.textContent = 'CAÍDA RÁPIDA';
+          this.elements.vspeedSubTag.style.color = 'var(--c-critical)';
+        }
+      } else if (vz < -2) {
+        this.elements.vspeedArc.setAttribute('class', 'half-dial-val warning');
+        this.elements.vspeedNeedle.className = 'half-dial-needle amber';
+        if (this.elements.vspeedSubTag) {
+          this.elements.vspeedSubTag.textContent = 'DESCENSO';
+          this.elements.vspeedSubTag.style.color = 'var(--c-warning)';
+        }
+      } else if (vz > 2) {
+        this.elements.vspeedArc.setAttribute('class', 'half-dial-val nominal');
+        this.elements.vspeedNeedle.className = 'half-dial-needle';
+        if (this.elements.vspeedSubTag) {
+          this.elements.vspeedSubTag.textContent = 'ASCENSO';
+          this.elements.vspeedSubTag.style.color = 'var(--c-cyan)';
+        }
+      } else {
+        this.elements.vspeedArc.setAttribute('class', 'half-dial-val nominal');
+        this.elements.vspeedNeedle.className = 'half-dial-needle';
+        if (this.elements.vspeedSubTag) {
+          this.elements.vspeedSubTag.textContent = 'ESTABLE';
+          this.elements.vspeedSubTag.style.color = 'var(--text-secondary)';
+        }
+      }
+    }
+
+    // 3. UPDATE BAROMETER (Half-Dial: 700 to 1050 hPa)
     if (this.elements.pressNum) {
       this.elements.pressNum.textContent = press.toFixed(1);
     }
-    if (this.elements.pressureCircle) {
+    if (this.elements.pressureNeedle && this.elements.pressureArc) {
       const pressClamped = Math.max(700, Math.min(1050, press));
-      const pressFrac = (pressClamped - 700) / (1050 - 700); // 0 to 1
-      const circumference = 251.2;
-      const offset = circumference * (1 - (pressFrac * 0.75));
-      this.elements.pressureCircle.style.strokeDashoffset = offset;
+      const pressFrac = (pressClamped - 700) / (1050 - 700);
+      const needleDeg = -90 + pressFrac * 180;
+      this.elements.pressureNeedle.style.transform = `rotate(${needleDeg.toFixed(1)}deg)`;
 
-      // Dynamic status color coding
+      const arcOffset = 144.5 * (1 - pressFrac);
+      this.elements.pressureArc.style.strokeDashoffset = arcOffset.toFixed(1);
+
       if (press < 780 || press > 1060 || packet.status?.includes('BARO')) {
-        this.elements.pressureCircle.setAttribute('class', 'gauge-meter-val warning');
+        this.elements.pressureArc.setAttribute('class', 'half-dial-val warning');
       } else {
-        this.elements.pressureCircle.setAttribute('class', 'gauge-meter-val nominal');
+        this.elements.pressureArc.setAttribute('class', 'half-dial-val nominal');
       }
     }
 
-    // 3. Update Temperature (-20°C to +50°C)
+    // 4. UPDATE TEMPERATURE (Half-Dial: -20°C to +50°C)
     if (this.elements.tempNum) {
       this.elements.tempNum.textContent = temp.toFixed(1);
     }
-    if (this.elements.tempCircle) {
+    if (this.elements.tempNeedle && this.elements.tempArc) {
       const tempClamped = Math.max(-20, Math.min(50, temp));
       const tempFrac = (tempClamped - (-20)) / (50 - (-20));
-      const circumference = 251.2;
-      const offset = circumference * (1 - (tempFrac * 0.75));
-      this.elements.tempCircle.style.strokeDashoffset = offset;
+      const needleDeg = -90 + tempFrac * 180;
+      this.elements.tempNeedle.style.transform = `rotate(${needleDeg.toFixed(1)}deg)`;
+
+      const arcOffset = 144.5 * (1 - tempFrac);
+      this.elements.tempArc.style.strokeDashoffset = arcOffset.toFixed(1);
 
       if (temp < 0) {
-        this.elements.tempCircle.setAttribute('class', 'gauge-meter-val warning'); // Freeze alert
+        this.elements.tempArc.setAttribute('class', 'half-dial-val warning');
       } else if (temp > 45) {
-        this.elements.tempCircle.setAttribute('class', 'gauge-meter-val critical'); // Overheat alert
+        this.elements.tempArc.setAttribute('class', 'half-dial-val critical');
       } else {
-        this.elements.tempCircle.setAttribute('class', 'gauge-meter-val nominal');
+        this.elements.tempArc.setAttribute('class', 'half-dial-val nominal');
       }
     }
 
-    // 4. Update LoRa RSSI (-125 dBm to -30 dBm)
+    // 5. UPDATE LORA RSSI (-125 dBm to -30 dBm)
     if (this.elements.rssiNum) {
       this.elements.rssiNum.textContent = `${rssi} dBm`;
     }
@@ -278,7 +479,7 @@ class AnalogGaugesComponent {
       }
     }
 
-    // 5. Update LoRa SNR (-10 dB to +15 dB)
+    // 6. UPDATE LORA SNR (-10 dB to +15 dB)
     if (this.elements.snrNum) {
       this.elements.snrNum.textContent = `${snr >= 0 ? '+' : ''}${snr.toFixed(1)} dB`;
     }
@@ -295,7 +496,7 @@ class AnalogGaugesComponent {
       }
     }
 
-    // 6. Update RF status badge (Translated to Spanish)
+    // 7. UPDATE RF STATUS BADGE
     if (this.elements.rfStatus && metrics) {
       const qualityMap = {
         'EXCELLENT': { label: 'EXCELENTE', cls: 'badge badge-nominal' },
@@ -309,7 +510,7 @@ class AnalogGaugesComponent {
       this.elements.rfStatus.className = q.cls;
     }
 
-    // 7. Update G-Force (From 6-DOF IMU Accelerometer)
+    // 8. UPDATE G-FORCE (From 6-DOF IMU Accelerometer)
     if (this.elements.gforce) {
       if (packet.sensors?.imu?.accel_mps2) {
         const a = packet.sensors.imu.accel_mps2;
@@ -323,19 +524,11 @@ class AnalogGaugesComponent {
       }
     }
 
-    // 8. Update Vertical Speed (Variometer)
-    if (this.elements.vspeed && metrics) {
-      const vz = metrics.descentRate_mps || 0;
-      this.elements.vspeed.textContent = `${vz >= 0 ? '+' : ''}${vz.toFixed(1)} m/s`;
-      this.elements.vspeed.style.color = vz < -15 ? 'var(--c-critical)' : (vz < -5 ? 'var(--c-warning)' : 'var(--c-cyan)');
-    }
-
-    // 9. Update Flight Phase Tag
+    // 9. UPDATE FLIGHT PHASE TAG
     if (this.elements.flightPhase && metrics) {
       const phase = metrics.flightPhase || 'TRANSMITIENDO';
       this.elements.flightPhase.textContent = phase;
 
-      // Dynamic phase coloring
       if (phase.includes('ASCENSO') || phase.includes('DRON') || phase.includes('ELEVACIÓN')) {
         this.elements.flightPhase.style.color = 'var(--c-cyan)';
         this.elements.flightPhase.style.textShadow = '0 0 8px rgba(0,229,255,0.6)';

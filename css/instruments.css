@@ -94,7 +94,7 @@
   filter: drop-shadow(0 0 6px var(--c-critical-glow));
 }
 
-/* Circular Needle Variant (Altimeter / Barometer dial) */
+/* Circular Needle Variant (Altimeter dial) */
 .analog-dial {
   width: 120px;
   height: 120px;
@@ -115,7 +115,7 @@
   border-radius: 50%;
   background: var(--c-cyan);
   box-shadow: 0 0 6px var(--c-cyan);
-  z-index: 5;
+  z-index: 7;
 }
 
 .dial-needle {
@@ -130,16 +130,188 @@
   transform: rotate(0deg);
   transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: 0 0 8px var(--c-cyan);
-  z-index: 4;
+  z-index: 6;
 }
 
 .dial-needle.secondary {
-  height: 32px;
+  height: 36px;
   width: 4px;
   left: calc(50% - 2px);
-  background: var(--c-warning);
+  background: linear-gradient(to top, var(--c-warning), #fff);
   box-shadow: 0 0 6px var(--c-warning);
+  z-index: 5;
+}
+
+/* Third Needle: 10,000m Ultra-Scale Pointer with Arrowhead */
+.dial-needle.tenk {
+  height: 46px;
+  width: 2px;
+  left: calc(50% - 1px);
+  background: #ffd166;
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.7);
+  z-index: 4;
+}
+
+.dial-needle.tenk::after {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: -3px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 8px solid #ffd166;
+}
+
+/* Altimeter Mechanical Odometer Sub-Counter Window */
+.altimeter-k-window {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(4, 7, 12, 0.94);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  border-radius: 2px;
+  padding: 1px 5px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #ffd166;
+  z-index: 8;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.9), 0 0 4px rgba(255, 209, 102, 0.2);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.altimeter-k-window.active-high {
+  border-color: #ffd166;
+  color: #fff;
+  background: rgba(255, 209, 102, 0.15);
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.6), inset 0 0 5px rgba(0,0,0,0.9);
+}
+
+/* ==========================================================================
+   HALF-DIAL (MEDIO DIAL) TACTICAL INSTRUMENTS
+   ========================================================================== */
+.half-dial-wrap {
+  width: 130px;
+  height: 76px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: visible;
+  margin-top: 2px;
+}
+
+.half-dial-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.half-dial-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.half-dial-val {
+  fill: none;
+  stroke: var(--c-cyan);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 144.5;
+  stroke-dashoffset: 72.2;
+  transition: stroke-dashoffset 0.25s cubic-bezier(0.1, 0.7, 0.1, 1), stroke 0.3s ease;
+  filter: drop-shadow(0 0 4px var(--c-cyan-glow));
+}
+
+.half-dial-val.nominal {
+  stroke: var(--c-nominal);
+  filter: drop-shadow(0 0 4px var(--c-nominal-glow));
+}
+
+.half-dial-val.warning {
+  stroke: var(--c-warning);
+  filter: drop-shadow(0 0 5px var(--c-warning-glow));
+}
+
+.half-dial-val.critical {
+  stroke: var(--c-critical);
+  filter: drop-shadow(0 0 6px var(--c-critical-glow));
+}
+
+.half-dial-needle {
+  position: absolute;
+  bottom: 8px;
+  left: calc(50% - 1.5px);
+  width: 3px;
+  height: 44px;
+  background: linear-gradient(to top, var(--c-cyan), #ffffff);
+  border-radius: 2px 2px 0 0;
+  transform-origin: 50% 100%;
+  transform: rotate(0deg);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 0 6px var(--c-cyan);
+  z-index: 4;
+}
+
+.half-dial-needle.amber {
+  background: linear-gradient(to top, var(--c-warning), #ffffff);
+  box-shadow: 0 0 6px var(--c-warning);
+}
+
+.half-dial-hub {
+  position: absolute;
+  bottom: 2px;
+  left: calc(50% - 6px);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #0d1522;
+  border: 2px solid var(--c-cyan);
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
+  z-index: 5;
+}
+
+.half-dial-readout {
+  position: absolute;
+  bottom: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
   z-index: 3;
+}
+
+.half-dial-readout .readout-primary {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.half-dial-readout .readout-sub {
+  font-size: 8px;
+  opacity: 0.8;
+  margin-top: 1px;
+}
+
+.half-dial-limits {
+  display: flex;
+  justify-content: space-between;
+  width: 116px;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  color: var(--text-muted);
 }
 
 /* Central Numeric Readout */

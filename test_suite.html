@@ -5,6 +5,7 @@
   <title>CanSat Tactical Suite - Automated Test Harness</title>
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/tactical_grid.css">
+  <link rel="stylesheet" href="css/instruments.css">
   <style>
     body { background: #05080e; color: #fff; font-family: monospace; padding: 20px; }
     .test-pass { color: #00e676; font-weight: bold; }
@@ -20,6 +21,7 @@
   <div id="test-mount" style="position: absolute; left: -9999px; width: 1200px; height: 800px;">
     <div id="test-charts-container" style="width: 800px; height: 500px;"></div>
     <div id="test-raw-container" style="width: 800px; height: 300px;"></div>
+    <div id="test-gauges-container" style="width: 800px; height: 400px;"></div>
   </div>
 
   <!-- Dependencies -->
@@ -27,6 +29,7 @@
   <script src="js/modules/telemetry_parser.js"></script>
   <script src="js/components/charts_engine.js"></script>
   <script src="js/components/raw_table.js"></script>
+  <script src="js/components/analog_gauges.js"></script>
 
   <script>
     const resultsDiv = document.getElementById('test-results');
@@ -193,6 +196,111 @@
       assert('0m Altitude Coordinate In Canvas', y0 <= testCanvas.height);
       assert('130m Altitude Coordinate In Canvas', y130 >= plotAreaAlt.top && y130 < y0);
       assert('Altitude Delta 0-130m Has Distinct Vertical Span', (y0 - y130) > 15, `span = ${(y0 - y130).toFixed(1)}px`);
+
+      // -------------------------------------------------------------
+      // TEST 9: AnalogGaugesComponent Initialization & Structure
+      // -------------------------------------------------------------
+      const gaugesContainer = document.getElementById('test-gauges-container');
+      const gauges = new window.AnalogGaugesComponent(gaugesContainer);
+      assert('Analog Gauges Mounted', gaugesContainer.querySelector('.instruments-grid') !== null);
+      assert('Altimeter Fast Needle Exists', gauges.elements.needleFast !== null);
+      assert('Altimeter Slow Needle Exists', gauges.elements.needleSlow !== null);
+      assert('Altimeter 10,000m Ten-K Needle Exists', gauges.elements.needleTenK !== null);
+      assert('Altimeter Thousands Odometer Box Exists', gauges.elements.altKBox !== null);
+      assert('Altimeter Thousands Odometer Val Exists', gauges.elements.altKVal !== null);
+      assert('Variometer Half-Dial Needle Exists', gauges.elements.vspeedNeedle !== null);
+      assert('Variometer Half-Dial Arc Exists', gauges.elements.vspeedArc !== null);
+      assert('Barometer Half-Dial Needle Exists', gauges.elements.pressureNeedle !== null);
+      assert('Temperature Half-Dial Needle Exists', gauges.elements.tempNeedle !== null);
+
+      // -------------------------------------------------------------
+      // TEST 10: Multi-Range Altimeter (>1000m) & Odometer Window
+      // -------------------------------------------------------------
+      // Case A: 1250 meters
+      const packet1250 = {
+        timestamp: 1050.0,
+        status: 'NOMINAL',
+        sensors: {
+          bmp280: { altitude_m: 1250.0, pressure_hpa: 875.0, temp_c: 12.0 },
+          telemetry: { rssi_lora: -65, snr: 9.5, flight_phase: 'ASCENSO' },
+          imu: { accel_mps2: { x: 0, y: 0, z: 9.81 }, gyro_rads: { x: 0, y: 0, z: 0 } },
+          kalman: { filteredAltitude_m: 1250.0, filteredVelocity_mps: 8.5 }
+        }
+      };
+      gauges.update(packet1250, { maxAltitude_m: 1250.0, linkQuality: 'EXCELLENT', flightPhase: 'ASCENSO', descentRate_mps: 8.5 });
+
+      assert('Altimeter Digital Altitude Matches', gauges.elements.altNum.textContent === '1250.0', gauges.elements.altNum.textContent);
+      assert('Altimeter Odometer Shows 1 for 1250m', gauges.elements.altKVal.textContent === '1', `odometer = ${gauges.elements.altKVal.textContent}`);
+      assert('Altimeter Odometer Highlights Active (>1000m)', gauges.elements.altKBox.classList.contains('active-high'));
+      const getRotation = el => parseFloat(el.style.transform.replace(/[^\d.-]/g, ''));
+      assert('Altimeter Ten-K Needle Rotates for 1250m', Math.abs(getRotation(gauges.elements.needleTenK) - 45) < 0.1, gauges.elements.needleTenK.style.transform);
+      assert('Altimeter Fast Needle Rotates for 1250m', Math.abs(getRotation(gauges.elements.needleFast) - 180) < 0.1, gauges.elements.needleFast.style.transform);
+      assert('Altimeter Slow Needle Rotates for 1250m', Math.abs(getRotation(gauges.elements.needleSlow) - 90) < 0.1, gauges.elements.needleSlow.style.transform);
+
+      // Case B: 2750 meters
+      const packet2750 = {
+        timestamp: 1100.0,
+        status: 'NOMINAL',
+        sensors: {
+          bmp280: { altitude_m: 2750.0, pressure_hpa: 730.0, temp_c: 5.0 },
+          telemetry: { rssi_lora: -72, snr: 7.0, flight_phase: 'ASCENSO' },
+          imu: { accel_mps2: { x: 0, y: 0, z: 9.81 }, gyro_rads: { x: 0, y: 0, z: 0 } },
+          kalman: { filteredAltitude_m: 2750.0, filteredVelocity_mps: 12.0 }
+        }
+      };
+      gauges.update(packet2750, { maxAltitude_m: 2750.0, linkQuality: 'EXCELLENT', flightPhase: 'ASCENSO', descentRate_mps: 12.0 });
+      assert('Altimeter Odometer Shows 2 for 2750m', gauges.elements.altKVal.textContent === '2', `odometer = ${gauges.elements.altKVal.textContent}`);
+      assert('Altimeter Ten-K Needle Rotates for 2750m', Math.abs(getRotation(gauges.elements.needleTenK) - 99) < 0.1, gauges.elements.needleTenK.style.transform);
+
+      // Case C: 350 meters (< 1000m)
+      const packet350 = {
+        timestamp: 1020.0,
+        status: 'NOMINAL',
+        sensors: {
+          bmp280: { altitude_m: 350.0, pressure_hpa: 970.0, temp_c: 18.0 },
+          telemetry: { rssi_lora: -50, snr: 11.0, flight_phase: 'ASCENSO' },
+          imu: { accel_mps2: { x: 0, y: 0, z: 9.81 }, gyro_rads: { x: 0, y: 0, z: 0 } },
+          kalman: { filteredAltitude_m: 350.0, filteredVelocity_mps: 5.0 }
+        }
+      };
+      gauges.update(packet350, { maxAltitude_m: 350.0, linkQuality: 'EXCELLENT', flightPhase: 'ASCENSO', descentRate_mps: 5.0 });
+      assert('Altimeter Odometer Shows 0 for 350m', gauges.elements.altKVal.textContent === '0', `odometer = ${gauges.elements.altKVal.textContent}`);
+      assert('Altimeter Odometer Inactive (<1000m)', !gauges.elements.altKBox.classList.contains('active-high'));
+
+      // -------------------------------------------------------------
+      // TEST 11: Half-Dial Gauges Response (Variometer, Baro, Temp)
+      // -------------------------------------------------------------
+      // Vz = 0 m/s -> Center needle (0 deg)
+      const packetHover = {
+        timestamp: 1150.0,
+        status: 'NOMINAL',
+        sensors: {
+          bmp280: { altitude_m: 500.0, pressure_hpa: 955.0, temp_c: 20.0 },
+          telemetry: { rssi_lora: -55, snr: 10.0, flight_phase: 'ESTACIONARIO' },
+          imu: { accel_mps2: { x: 0, y: 0, z: 9.81 }, gyro_rads: { x: 0, y: 0, z: 0 } },
+          kalman: { filteredAltitude_m: 500.0, filteredVelocity_mps: 0.0 }
+        }
+      };
+      gauges.update(packetHover, { maxAltitude_m: 500.0, linkQuality: 'EXCELLENT', flightPhase: 'ESTACIONARIO', descentRate_mps: 0.0 });
+      assert('Variometer Level Flight Zero Degrees', Math.abs(getRotation(gauges.elements.vspeedNeedle) - 0) < 0.1, gauges.elements.vspeedNeedle.style.transform);
+      assert('Variometer Status Tag ESTABLE', gauges.elements.vspeedSubTag.textContent === 'ESTABLE');
+
+      // Vz = -15 m/s -> Fast Descent Warning
+      const packetDescent = {
+        timestamp: 1200.0,
+        status: 'NOMINAL',
+        sensors: {
+          bmp280: { altitude_m: 400.0, pressure_hpa: 965.0, temp_c: -5.0 },
+          telemetry: { rssi_lora: -90, snr: 2.0, flight_phase: 'DESCENSO' },
+          imu: { accel_mps2: { x: 0, y: 0, z: 9.81 }, gyro_rads: { x: 0, y: 0, z: 0 } },
+          kalman: { filteredAltitude_m: 400.0, filteredVelocity_mps: -15.0 }
+        }
+      };
+      gauges.update(packetDescent, { maxAltitude_m: 500.0, linkQuality: 'DEGRADED', flightPhase: 'DESCENSO', descentRate_mps: -15.0 });
+      assert('Variometer Rapid Descent Status', gauges.elements.vspeedSubTag.textContent === 'CAÍDA RÁPIDA');
+      assert('Variometer Rapid Descent Class Critical', gauges.elements.vspeedArc.getAttribute('class').includes('critical'));
+      assert('Sub-Zero Temperature Arc Class Warning', gauges.elements.tempArc.getAttribute('class').includes('warning'));
+      assert('RF Link Quality Badge Degraded', gauges.elements.rfStatus.textContent === 'DEGRADADO');
 
     } catch (e) {
       assert('Test Execution Crash', false, e.message);
