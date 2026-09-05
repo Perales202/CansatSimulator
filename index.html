@@ -133,8 +133,22 @@
       </div>
     </header>
 
-    <!-- MAIN TACTICAL WORKSPACE (4-QUADRANT GRID) -->
-    <main class="tactical-workspace">
+    <!-- WORKSPACE TACTICAL TABS STRIP -->
+    <nav class="tactical-workspace-tabs" id="workspace-tabs-nav">
+      <button class="workspace-tab-btn active" data-tab="flight" id="tab-btn-flight" title="Visualización táctica de vuelo, instrumentos y perfiles">
+        <span class="tab-btn-icon">🚀</span>
+        <span class="tab-btn-text">MISIÓN & VUELO EN TIEMPO REAL</span>
+        <span class="tab-btn-pill live">EN VIVO (60 FPS)</span>
+      </button>
+      <button class="workspace-tab-btn" data-tab="telemetry" id="tab-btn-telemetry" title="Registro detallado de telemetría en bruto, filtrado y exportador">
+        <span class="tab-btn-icon">▤</span>
+        <span class="tab-btn-text">REGISTRO DE TELEMETRÍA (JSON & RAW)</span>
+        <span class="tab-btn-pill counter" id="tab-telemetry-badge">0 PKTS</span>
+      </button>
+    </nav>
+
+    <!-- TAB 1: FLIGHT & MISSION WORKSPACE -->
+    <main class="tactical-workspace" id="workspace-tab-flight">
 
       <!-- QUADRANT 1: ANALOG INSTRUMENTS CLUSTER -->
       <section class="tactical-panel panel-instruments" data-module-id="instruments">
@@ -187,7 +201,11 @@
         </div>
       </section>
 
-      <!-- QUADRANT 4: RAW TELEMETRY STREAM TABLE & EXPORTER -->
+    </main>
+
+    <!-- TAB 2: RAW TELEMETRY DATA & EXPORT WORKSPACE -->
+    <main class="tactical-workspace-telemetry" id="workspace-tab-telemetry" style="display: none;">
+      <!-- FULL VIEWPORT RAW TELEMETRY PANEL -->
       <section class="tactical-panel panel-raw-telemetry" data-module-id="raw_table">
         <div class="panel-header">
           <div class="panel-title">
@@ -203,7 +221,6 @@
           <!-- Populated by RawTableComponent -->
         </div>
       </section>
-
     </main>
 
   </div>

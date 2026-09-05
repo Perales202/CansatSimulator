@@ -96,6 +96,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 6. Update master header telemetry pills
     updateHeaderTelemetryPills(packet, state.metrics);
+
+    // 7. Update workspace tabs telemetry badge
+    const tabTelemBadge = document.getElementById('tab-telemetry-badge');
+    if (tabTelemBadge && state.metrics) {
+      tabTelemBadge.textContent = `${state.metrics.packetCount || 0} PKTS`;
+    }
   }
 
   // Clocks: Mission Elapsed Time (MET) and Ground Station UTC
@@ -447,6 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (charts.reset) charts.reset();
         missionStartTime = Date.now();
         state.resetMission();
+        const tabTelemBadge = document.getElementById('tab-telemetry-badge');
+        if (tabTelemBadge) tabTelemBadge.textContent = '0 PKTS';
       }
 
       setAppMode('SITL');
@@ -501,6 +509,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (charts.reset) charts.reset();
         missionStartTime = Date.now();
         state.resetMission();
+        const tabTelemBadge = document.getElementById('tab-telemetry-badge');
+        if (tabTelemBadge) tabTelemBadge.textContent = '0 PKTS';
         sitl.start();
         setGlobalStatus('Simulando');
       }
@@ -663,6 +673,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const moduleId = panel.getAttribute('data-module-id');
         const title = panel.querySelector('.panel-title')?.textContent?.trim() || moduleId;
         multiScreen.popoutModule(moduleId, title);
+      }
+    });
+  });
+
+  // =========================================================================
+  // WORKSPACE TACTICAL TABS SWITCHER
+  // =========================================================================
+  const workspaceTabBtns = document.querySelectorAll('.workspace-tab-btn');
+  const workspaceTabFlight = document.getElementById('workspace-tab-flight');
+  const workspaceTabTelemetry = document.getElementById('workspace-tab-telemetry');
+
+  workspaceTabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.getAttribute('data-tab');
+      workspaceTabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      if (targetTab === 'flight') {
+        if (workspaceTabFlight) workspaceTabFlight.style.display = 'grid';
+        if (workspaceTabTelemetry) workspaceTabTelemetry.style.display = 'none';
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+        }, 40);
+      } else if (targetTab === 'telemetry') {
+        if (workspaceTabFlight) workspaceTabFlight.style.display = 'none';
+        if (workspaceTabTelemetry) workspaceTabTelemetry.style.display = 'flex';
       }
     });
   });
