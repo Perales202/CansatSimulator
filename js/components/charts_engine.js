@@ -76,6 +76,7 @@ class ChartsEngine {
             <button class="chart-ctrl-btn" data-window="120">120s</button>
             <button class="chart-ctrl-btn" data-window="0">TODO</button>
             <button class="chart-ctrl-btn pause-btn" id="btn-chart-pause" title="Pausar visualización para inspección táctica">⏸ PAUSAR</button>
+            <button class="chart-ctrl-btn snapshot-btn" id="btn-chart-snapshot" title="Exportar captura PNG de alta definición">📷 CAPTURA</button>
           </div>
 
           <!-- Instant Metric Badges -->
@@ -150,6 +151,7 @@ class ChartsEngine {
       pillEta: document.getElementById('chart-pill-eta'),
       tooltip: document.getElementById('chart-tooltip'),
       btnPause: document.getElementById('btn-chart-pause'),
+      btnSnapshot: document.getElementById('btn-chart-snapshot'),
       grid: document.getElementById('charts-canvas-grid')
     };
 
@@ -186,6 +188,13 @@ class ChartsEngine {
         this.isPaused = !this.isPaused;
         this.elements.btnPause.classList.toggle('paused', this.isPaused);
         this.elements.btnPause.textContent = this.isPaused ? '▶ REANUDAR' : '⏸ PAUSAR';
+      });
+    }
+
+    // Snapshot PNG Export Button
+    if (this.elements.btnSnapshot) {
+      this.elements.btnSnapshot.addEventListener('click', () => {
+        this.exportSnapshotPNG();
       });
     }
 
@@ -227,11 +236,55 @@ class ChartsEngine {
       this.redrawAll();
     };
 
+    // Smooth Interactive Mousewheel Time Zoom
+    const handleWheel = (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY > 0 ? 1.25 : 0.8;
+      
+      let currentWin = this.timeWindowSeconds;
+      const totalFlightSec = this.history.length > 1
+        ? Math.max(20, Math.ceil(this.history[this.history.length - 1].t - this.history[0].t))
+        : 120;
+
+      if (currentWin === 0) {
+        currentWin = totalFlightSec;
+      }
+
+      let newWin = Math.round(currentWin * zoomFactor);
+      if (newWin < 10) newWin = 10;
+      if (newWin >= totalFlightSec) {
+        newWin = 0; // Snap to TODO
+      }
+
+      this.timeWindowSeconds = newWin;
+
+      // Update button highlights
+      const winBtns = this.container.querySelectorAll('.chart-ctrl-btn[data-window]');
+      let matched = false;
+      winBtns.forEach(btn => {
+        const val = Number(btn.getAttribute('data-window'));
+        if (newWin === val) {
+          btn.classList.add('active');
+          matched = true;
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      const scaleLabel = this.container.querySelector('.chart-tools-strip span');
+      if (scaleLabel) {
+        scaleLabel.textContent = (!matched && newWin > 0) ? `ESCALA: [${newWin}s]` : 'ESCALA:';
+      }
+
+      this.redrawAll();
+    };
+
     ['primary', 'secondary'].forEach(key => {
       const c = this.canvases[key];
       if (c) {
         c.addEventListener('mousemove', handleMouseMove);
         c.addEventListener('mouseleave', handleMouseLeave);
+        c.addEventListener('wheel', handleWheel, { passive: false });
       }
     });
   }
@@ -470,11 +523,17 @@ class ChartsEngine {
       // Tactical Grid
       this.drawTacticalGrid(ctxP, w, h, 0, maxAlt, 'm', dpr);
 
+      // Safe Ejection / Recovery Zone Shading between chuteDeployAlt_m and apogeeTarget_m
+      this.drawRecoveryZoneShading(ctxP, w, h, 0, maxAlt, dpr);
+
       // Horizontal Mission References (Apogee & Parachute)
       this.drawReferenceLine(ctxP, w, h, this.missionLimits.apogeeTarget_m, 0, maxAlt, 
         `APOGEO / SUELTA: ${this.missionLimits.apogeeTarget_m}m`, '#ffd166', dpr);
       this.drawReferenceLine(ctxP, w, h, this.missionLimits.chuteDeployAlt_m, 0, maxAlt, 
         `PARACAÍDAS: ${this.missionLimits.chuteDeployAlt_m}m`, '#00e676', dpr);
+
+      // Theoretical Ghost Profile (Nominal Trajectory Reference)
+      this.drawNominalGhostCurve(ctxP, pts, 0, maxAlt, w, h, dpr);
 
       // Raw Barometric Trace (Dotted White/Gray)
       this.drawDataCurve(ctxP, pts, p => p.altBaro, 0, maxAlt, w, h, {
@@ -940,6 +999,207 @@ class ChartsEngine {
       <div class="tt-time">⏱ T+${mins}:${secs} // TELEMETRÍA INSPECCIÓN</div>
       ${rowsHTML}
     `;
+  }
+
+  // ==========================================================================
+  // SAFE RECOVERY ZONE SHADING
+  // ==========================================================================
+  drawRecoveryZoneShading(ctx, w, h, minVal, maxVal, dpr) {
+    const chuteAlt = this.missionLimits.chuteDeployAlt_m;
+    const apogeeAlt = this.missionLimits.apogeeTarget_m;
+    if (chuteAlt <= 0 || apogeeAlt <= chuteAlt || maxVal <= 0) return;
+
+    const marginY = 12 * dpr;
+    const innerH = h - marginY * 2;
+    const yTop = h - ((apogeeAlt - minVal) / (maxVal - minVal)) * innerH - marginY;
+    const yBottom = h - ((chuteAlt - minVal) / (maxVal - minVal)) * innerH - marginY;
+    const zoneH = yBottom - yTop;
+
+    if (zoneH > 2) {
+      ctx.save();
+      const zoneGrad = ctx.createLinearGradient(0, yTop, 0, yBottom);
+      zoneGrad.addColorStop(0, 'rgba(255, 209, 102, 0.08)'); // Gold top at apogee
+      zoneGrad.addColorStop(0.35, 'rgba(0, 230, 118, 0.09)'); // Green middle
+      zoneGrad.addColorStop(1, 'rgba(0, 230, 118, 0.02)');   // Subtle fade
+      ctx.fillStyle = zoneGrad;
+      ctx.fillRect(0, yTop, w, zoneH);
+
+      // Subtle boundary border
+      ctx.strokeStyle = 'rgba(0, 230, 118, 0.2)';
+      ctx.lineWidth = 1 * dpr;
+      ctx.strokeRect(0, yTop, w, zoneH);
+
+      // Tactical watermark text in center
+      ctx.fillStyle = 'rgba(0, 230, 118, 0.35)';
+      ctx.font = `bold ${8 * dpr}px monospace`;
+      ctx.textAlign = 'left';
+      ctx.fillText('◬ VENTANA DE RECUPERACIÓN / EYECCIÓN NOMINAL', 14 * dpr, yTop + zoneH / 2 + 3 * dpr);
+      ctx.restore();
+    }
+  }
+
+  // ==========================================================================
+  // NOMINAL THEORETICAL GHOST FLIGHT PROFILE
+  // ==========================================================================
+  drawNominalGhostCurve(ctx, pts, minVal, maxVal, w, h, dpr) {
+    if (pts.length < 2 || !this.history.length) return;
+    const t0 = this.history[0].t;
+    const apogee = this.missionLimits.apogeeTarget_m;
+    const chute = this.missionLimits.chuteDeployAlt_m;
+
+    const marginY = 12 * dpr;
+    const innerH = h - marginY * 2;
+    const n = pts.length;
+    const stepX = w / Math.max(1, n - 1);
+
+    // Compute nominal parameters
+    const tPad = 3.0;
+    const vAscent = 10.0;
+    const tAscent = tPad + (apogee / vAscent);
+    const tHover = 2.0;
+    const tRelease = tAscent + tHover;
+    const tFreefallSec = Math.sqrt(Math.max(0, (2 * Math.max(1, apogee - chute)) / 9.81));
+    const tChuteDeploy = tRelease + tFreefallSec;
+    const vChute = 6.0;
+
+    const getNominalAlt = (tSec) => {
+      if (tSec <= tPad) return 0;
+      if (tSec <= tAscent) return Math.min(apogee, (tSec - tPad) * vAscent);
+      if (tSec <= tRelease) return apogee;
+      if (tSec <= tChuteDeploy) {
+        const tf = tSec - tRelease;
+        return Math.max(chute, apogee - 0.5 * 9.81 * tf * tf);
+      }
+      const tc = tSec - tChuteDeploy;
+      return Math.max(0, chute - vChute * tc);
+    };
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.28)';
+    ctx.lineWidth = 1.4 * dpr;
+    ctx.setLineDash([5 * dpr, 4 * dpr]);
+
+    pts.forEach((pt, i) => {
+      const tSec = pt.t - t0;
+      const nomAlt = getNominalAlt(tSec);
+      const v = Math.max(minVal, Math.min(maxVal, nomAlt));
+      const x = i * stepX;
+      const y = h - ((v - minVal) / (maxVal - minVal)) * innerH - marginY;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Legend label top-right next to mission lines
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.45)';
+    ctx.font = `italic ${7.5 * dpr}px monospace`;
+    ctx.textAlign = 'left';
+    ctx.fillText('╌╌ NOMINAL TEÓRICO', 80 * dpr, marginY + 8 * dpr);
+    ctx.restore();
+  }
+
+  // ==========================================================================
+  // HIGH-RESOLUTION PNG SNAPSHOT EXPORTER
+  // ==========================================================================
+  exportSnapshotPNG() {
+    const dpr = window.devicePixelRatio || 1;
+    const canP = this.canvases.primary;
+    const canS = this.canvases.secondary;
+    if (!canP || !canS) return;
+
+    const outW = canP.width;
+    const headerH = Math.floor(65 * dpr);
+    const footerH = Math.floor(35 * dpr);
+    const gap = Math.floor(10 * dpr);
+    const outH = headerH + canP.height + gap + canS.height + footerH;
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = outW;
+    offscreen.height = outH;
+    const ctx = offscreen.getContext('2d');
+
+    // 1. Tactical Background
+    ctx.fillStyle = '#060a10';
+    ctx.fillRect(0, 0, outW, outH);
+
+    // Subtle background grid
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < outW; x += 30 * dpr) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, outH); ctx.stroke();
+    }
+    for (let y = 0; y < outH; y += 30 * dpr) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(outW, y); ctx.stroke();
+    }
+
+    // 2. Header
+    ctx.fillStyle = '#0b1320';
+    ctx.fillRect(0, 0, outW, headerH);
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 2 * dpr;
+    ctx.beginPath(); ctx.moveTo(0, headerH); ctx.lineTo(outW, headerH); ctx.stroke();
+
+    // Mission Title & Channel
+    ctx.fillStyle = '#00e5ff';
+    ctx.font = `bold ${14 * dpr}px monospace`;
+    ctx.textAlign = 'left';
+    ctx.fillText('SIMULADOR CANSAT // REPORTE DE TELEMETRÍA GRÁFICA', 16 * dpr, 26 * dpr);
+
+    const nowIso = new Date().toISOString().replace('T', ' ').substr(0, 19) + ' UTC';
+    const met = document.getElementById('clock-met-val')?.textContent || 'T+00:00:00';
+    let maxA = 0;
+    this.history.forEach(p => { if (p.altKalman > maxA) maxA = p.altKalman; });
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = `${10 * dpr}px monospace`;
+    ctx.fillText(`CANAL: ${this.activeChannel}  |  MET: ${met}  |  UTC: ${nowIso}  |  APOGEO MAX: ${maxA.toFixed(1)} m`, 16 * dpr, 48 * dpr);
+
+    // 3. Draw Primary Canvas
+    const primaryY = headerH + 4 * dpr;
+    ctx.drawImage(canP, 0, primaryY);
+
+    // 4. Draw Secondary Canvas
+    const secondaryY = primaryY + canP.height + gap;
+    ctx.drawImage(canS, 0, secondaryY);
+
+    // 5. Footer
+    ctx.fillStyle = '#0b1320';
+    ctx.fillRect(0, outH - footerH, outW, footerH);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, outH - footerH); ctx.lineTo(outW, outH - footerH); ctx.stroke();
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = `${9 * dpr}px monospace`;
+    ctx.textAlign = 'left';
+    ctx.fillText(`MUESTRAS REGISTRADAS: ${this.history.length}  |  ESTACIÓN TERRENA CANSAT TACTICAL SUITE`, 16 * dpr, outH - 12 * dpr);
+
+    ctx.textAlign = 'right';
+    ctx.fillText('FUSIÓN KALMAN 60 FPS // ENLACE LORA ENCRIPTADO', outW - 16 * dpr, outH - 12 * dpr);
+
+    // 6. Trigger Download
+    const dataUrl = offscreen.toDataURL('image/png');
+    const link = document.createElement('a');
+    const cleanMet = met.replace(/[^a-zA-Z0-9]/g, '_');
+    link.download = `cansat_telemetria_${cleanMet}.png`;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Visual feedback on button
+    if (this.elements.btnSnapshot) {
+      const origText = this.elements.btnSnapshot.textContent;
+      this.elements.btnSnapshot.textContent = '✔ GUARDADO';
+      this.elements.btnSnapshot.style.borderColor = 'var(--c-nominal)';
+      this.elements.btnSnapshot.style.color = 'var(--c-nominal)';
+      setTimeout(() => {
+        this.elements.btnSnapshot.textContent = origText;
+        this.elements.btnSnapshot.style.borderColor = '';
+        this.elements.btnSnapshot.style.color = '';
+      }, 1500);
+    }
   }
 }
 

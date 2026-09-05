@@ -637,6 +637,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Maximize / Restore Panel within Dashboard (Full Viewport Mode)
+  document.querySelectorAll('.maximize-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const panel = e.target.closest('.tactical-panel');
+      if (panel) {
+        const isMax = panel.classList.toggle('is-maximized');
+        btn.textContent = isMax ? '🗗' : '⛶';
+        btn.title = isMax ? 'Restaurar panel a cuadrícula original' : 'Maximizar panel en pantalla completa';
+        btn.classList.toggle('active', isMax);
+
+        // Notify charts, 3D radar, and gauges to recalculate their canvas sizes
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+        }, 50);
+      }
+    });
+  });
+
   // Popout Detach Buttons for 4K Multi-Monitor
   document.querySelectorAll('.popout-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {

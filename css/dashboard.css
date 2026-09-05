@@ -383,6 +383,34 @@
   color: var(--c-gold);
 }
 
+.btn-icon.maximize-btn:hover {
+  color: var(--c-cyan);
+}
+
+.btn-icon.maximize-btn.active {
+  color: var(--c-cyan);
+  background: rgba(0, 229, 255, 0.2);
+  border-color: var(--c-cyan);
+}
+
+/* Maximized Panel State (Full Viewport Overlay) */
+.tactical-panel.is-maximized {
+  position: fixed !important;
+  inset: 52px 10px 10px 10px !important;
+  z-index: 1200 !important;
+  width: calc(100vw - 20px) !important;
+  height: calc(100vh - 62px) !important;
+  max-width: none !important;
+  max-height: none !important;
+  background: var(--bg-card) !important;
+  border-color: var(--c-cyan) !important;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.95), 0 0 25px rgba(0, 229, 255, 0.25) !important;
+}
+
+.tactical-panel.is-maximized .panel-body {
+  height: calc(100% - 36px) !important;
+}
+
 /* Panel Body */
 .panel-body {
   flex: 1;

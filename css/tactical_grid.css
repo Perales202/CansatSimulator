@@ -465,6 +465,18 @@
   box-shadow: 0 0 8px rgba(255, 183, 0, 0.4);
 }
 
+.chart-ctrl-btn.snapshot-btn {
+  color: var(--c-cyan);
+  border-color: rgba(0, 229, 255, 0.35);
+  background: rgba(0, 229, 255, 0.08);
+}
+
+.chart-ctrl-btn.snapshot-btn:hover {
+  background: rgba(0, 229, 255, 0.2);
+  border-color: var(--c-cyan);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+}
+
 /* Metrics Quick Bar */
 .chart-metrics-strip {
   display: flex;
