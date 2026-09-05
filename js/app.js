@@ -30,6 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
     handleIncomingTelemetry(rawPacket);
   });
 
+  // Set initial mission references for charts
+  if (charts.setMissionLimits) {
+    charts.setMissionLimits(sitl.state.apogeeTarget_m, sitl.state.chuteDeployAlt_m);
+  }
+
   // Initialize Isolated Web Serial Manager (HITL)
   const serial = new window.WebSerialManager({
     baudRate: 115200,
@@ -410,6 +415,11 @@ document.addEventListener('DOMContentLoaded', () => {
         anomaly: anomaly
       });
 
+      // Update charts mission reference limits
+      if (charts.setMissionLimits) {
+        charts.setMissionLimits(apogee, chuteAlt);
+      }
+
       // Synchronize anomaly dropdown in toolbar
       const anomalyLabelEl = document.getElementById('sitl-anomaly-label');
       const anomalyTriggerEl = document.getElementById('sitl-anomaly-trigger');
@@ -434,6 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Reset mission state and timer if checked
       if (chkResetClock && chkResetClock.checked) {
         sitl.reset();
+        if (charts.reset) charts.reset();
         missionStartTime = Date.now();
         state.resetMission();
       }
@@ -487,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setGlobalStatus('Sin conexion');
       } else if (action === 'RESET') {
         sitl.reset();
+        if (charts.reset) charts.reset();
         missionStartTime = Date.now();
         state.resetMission();
         sitl.start();

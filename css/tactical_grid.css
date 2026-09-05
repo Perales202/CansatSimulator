@@ -358,53 +358,259 @@
   background: rgba(255, 183, 0, 0.1);
 }
 
-/* Telemetry Charts Strip */
-.charts-grid {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 8px;
+/* Telemetry Charts & Flight Profile Container */
+.charts-wrapper {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #060b13;
+}
+
+/* Tactical Top Control Bar: Channels, Time Windows & Metrics */
+.charts-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(11, 18, 30, 0.95);
+  border-bottom: 1px solid var(--border-tactical);
+  flex-shrink: 0;
+}
+
+.chart-channel-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-channel-btn {
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-dim);
+  border-radius: 2px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-channel-btn:hover {
+  color: var(--c-cyan);
+  border-color: var(--border-focus);
+  background: rgba(0, 229, 255, 0.05);
+}
+
+.chart-channel-btn.active {
+  color: #fff;
+  background: rgba(0, 229, 255, 0.14);
+  border-color: var(--c-cyan);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+
+.chart-channel-btn .tab-icon {
+  font-size: 11px;
+}
+
+/* Control tools (Time window, Pause, Live) */
+.chart-tools-strip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-ctrl-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  background: rgba(15, 23, 36, 0.8);
+  border: 1px solid var(--border-dim);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chart-ctrl-btn:hover {
+  color: var(--c-cyan);
+  border-color: var(--border-focus);
+}
+
+.chart-ctrl-btn.active {
+  color: var(--c-cyan);
+  background: rgba(0, 229, 255, 0.15);
+  border-color: var(--c-cyan);
+}
+
+.chart-ctrl-btn.pause-btn {
+  border-color: var(--border-tactical);
+}
+
+.chart-ctrl-btn.pause-btn.paused {
+  color: var(--c-warning);
+  border-color: var(--c-warning);
+  background: rgba(255, 183, 0, 0.15);
+  box-shadow: 0 0 8px rgba(255, 183, 0, 0.4);
+}
+
+/* Metrics Quick Bar */
+.chart-metrics-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+}
+
+.chart-metric-pill {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-muted);
+}
+
+.chart-metric-pill .metric-val {
+  color: var(--c-cyan);
+  font-weight: 700;
+}
+
+.chart-metric-pill .metric-val.gold {
+  color: var(--c-gold);
+}
+
+.chart-metric-pill .metric-val.warning {
+  color: var(--c-warning);
+}
+
+/* Dual Canvas Grid Container */
+.charts-grid {
+  display: grid;
+  grid-template-rows: 1.15fr 0.85fr;
+  gap: 6px;
+  flex: 1;
+  width: 100%;
+  padding: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
 }
 
 .chart-box {
-  background: #090e17;
+  background: #080d16;
   border: 1px solid var(--border-tactical);
   border-radius: 3px;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+}
+
+.chart-box:hover {
+  border-color: rgba(0, 229, 255, 0.35);
 }
 
 .chart-header-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px;
-  background: rgba(15, 22, 34, 0.8);
+  padding: 3px 8px;
+  background: rgba(14, 21, 33, 0.9);
   border-bottom: 1px solid var(--border-dim);
+  flex-shrink: 0;
 }
 
 .chart-header-title {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .chart-header-value {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: var(--c-cyan);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
 }
 
 .chart-canvas {
   flex: 1;
   width: 100%;
   display: block;
+  cursor: crosshair;
+}
+
+/* Floating Diegetic Inspection Tooltip */
+.chart-inspect-tooltip {
+  display: none;
+  position: absolute;
+  pointer-events: none;
+  background: rgba(6, 11, 20, 0.95);
+  border: 1px solid var(--c-cyan);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 229, 255, 0.35);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: #fff;
+  z-index: 100;
+  transform: translate(-50%, -100%);
+  margin-top: -10px;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
+.chart-inspect-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: var(--c-cyan) transparent transparent transparent;
+}
+
+.chart-inspect-tooltip .tt-time {
+  color: var(--c-cyan);
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 2px;
+  margin-bottom: 3px;
+}
+
+.chart-inspect-tooltip .tt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chart-inspect-tooltip .tt-label {
+  color: var(--text-muted);
+}
+
+.chart-inspect-tooltip .tt-val {
+  font-weight: 700;
+  color: #fff;
 }
 
 /* Serial Console Drawer / Modal */
